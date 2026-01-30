@@ -6,8 +6,15 @@
     <title>3D Calculus Lab</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Segoe UI', sans-serif; }
+        /* ==================== GLOBAL STYLES ==================== */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #050505; 
+            font-family: 'Segoe UI', sans-serif; 
+        }
         
+        /* ==================== LEFT PANEL (VISUAL CONTROLS) ==================== */
         #ui {
             position: absolute;
             top: 20px;
@@ -45,8 +52,60 @@
             font-weight: bold;
         }
 
-        .input-group { margin-bottom: 12px; }
-        label { display: block; font-size: 0.75em; color: #aaa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        /* ==================== RIGHT PANEL (FUNCTION & INTEGRAL) ==================== */
+        #ui-right {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(15, 15, 15, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            width: 320px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+            z-index: 100;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #ui-right.minimized {
+            transform: translateX(350px);
+            opacity: 0.5;
+        }
+
+        #minimize-btn-right {
+            position: absolute;
+            left: -40px;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            background: rgba(15, 15, 15, 0.9);
+            border: 1px solid #444;
+            border-radius: 6px 0 0 6px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* ==================== FORM ELEMENTS ==================== */
+        .input-group { 
+            margin-bottom: 12px; 
+        }
+        
+        label { 
+            display: block; 
+            font-size: 0.75em; 
+            color: #aaa; 
+            margin-bottom: 5px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+        
         input {
             width: 100%;
             background: #222;
@@ -57,7 +116,15 @@
             font-family: monospace;
             box-sizing: border-box;
         }
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+        
+        /* ==================== BUTTONS & MODES ==================== */
+        .btn-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr; 
+            gap: 8px; 
+            margin-top: 10px; 
+        }
+        
         button.mode-btn {
             padding: 8px;
             cursor: pointer;
@@ -68,8 +135,17 @@
             font-size: 0.85em;
             transition: all 0.2s;
         }
-        button.mode-btn:hover { background: #444; }
-        button.mode-btn.active { background: #2563eb; border-color: #3b82f6; }
+        
+        button.mode-btn:hover { 
+            background: #444; 
+        }
+        
+        button.mode-btn.active { 
+            background: #2563eb; 
+            border-color: #3b82f6; 
+        }
+        
+        /* ==================== DISPLAY & LEGEND ==================== */
         #math-display {
             margin-top: 15px;
             padding: 10px;
@@ -78,54 +154,48 @@
             font-size: 0.85em;
             border-left: 3px solid #2563eb;
         }
-        .legend { font-size: 0.7em; margin-top: 10px; opacity: 0.8; line-height: 1.4; }
-        .key { border: 1px solid #666; padding: 1px 4px; border-radius: 3px; font-size: 0.8em; }
-        canvas { display: block; cursor: grab; }
-        canvas:active { cursor: grabbing; }
+        
+        .legend { 
+            font-size: 0.7em; 
+            margin-top: 10px; 
+            opacity: 0.8; 
+            line-height: 1.4; 
+        }
+        
+        .key { 
+            border: 1px solid #666; 
+            padding: 1px 4px; 
+            border-radius: 3px; 
+            font-size: 0.8em; 
+        }
+        
+        /* ==================== CANVAS & MINIMAP ==================== */
+        canvas { 
+            display: block; 
+            cursor: grab; 
+        }
+        
+        canvas:active { 
+            cursor: grabbing; 
+        }
+
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background: #000;
+            z-index: 99;
+        }
     </style>
 </head>
 <body>
 
     <div id="ui">
         <button id="minimize-btn" title="Toggle UI">M</button>
-        <h3 style="margin: 0 0 15px 0; color: #2563eb;">3D Multivariable Lab</h3>
+        <h3 style="margin: 0 0 15px 0; color: #2563eb;">Visual Controls</h3>
         
-        <div class="input-group">
-            <label>FUNCTION f(x, z)</label>
-            <input type="text" id="funcInput" value="Math.cos(x)*Math.sin(z)*2" spellcheck="false">
-        </div>
-
-        <div class="input-group">
-            <label>PRESETS</label>
-            <select id="presetSelect" style="width: 100%; background: #222; color: #4ade80; border: 1px solid #444; padding: 8px; border-radius: 4px;">
-                <option value="">-- Choose a Shape --</option>
-                <option value="Math.cos(Math.sqrt(x*x + z*z)) * 2">The Ripple (Polar Wave)</option>
-                <option value="Math.exp(-(x*x + z*z) / 10) * 8">The Bell Curve (Gaussian)</option>
-                <option value="(x*x - z*z) / 4">The Saddle (Hyperbolic)</option>
-                <option value="Math.sin(x) * Math.cos(z) * 3">Egg Crate</option>
-                <option value="Math.abs(x)">The Cone (Best for Shells)</option>
-                <option value="Math.sqrt(Math.max(0, 25 - (x*x + z*z)))">The Hemisphere</option>
-            </select>
-            <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
-                <div style="flex:1; text-align:left; color:#9ca3af; font-size:0.8em;">Choose then click</div>
-                <button id="loadPresetBtn" class="mode-btn" style="padding:6px; font-size:0.82em;">Load Preset</button>
-            </div>
-            <div id="status" style="transition:opacity 240ms; opacity:0; font-size:0.82em; color:#a3e635; margin-top:6px;">&nbsp;</div>
-        </div>
-
-        <div class="btn-grid">
-            <button id="btnNormal" class="mode-btn active">Surface f(x,z)</button>
-            <button id="btnDeriv" class="mode-btn">Partial ∂f/∂x</button>
-            <button id="btnDouble" class="mode-btn">Double ∫∫</button>
-            <button id="btnTriple" class="mode-btn">Triple ∫∫∫</button>
-            <button id="btnShell" class="mode-btn">Shell Method</button>
-        </div>
-
-        <div id="math-display">
-            <strong>Logic:</strong> <span id="logicText">Showing Surface</span>
-            <div id="formula" style="color: #4ade80; margin-top: 5px; font-family: serif; font-style: italic;">y = f(x, z)</div>
-        </div>
-
         <div class="input-group">
             <label>VISUAL CONTROLS</label>
             <div style="display:grid; gap:8px;">
@@ -149,10 +219,24 @@
                     <input id="shellSpeed" type="range" min="0.01" max="0.25" step="0.01" value="0.05" style="width:140px;">
                     <span id="shellSpeedVal" style="width:30px; text-align:right; color:#cbd5e1;">0.05</span>
                 </div>
+            <div style="display:grid; gap:8px;">
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <input id="shellAuto" type="checkbox" checked>
+                    <input id="shellAuto" type="checkbox" checked style="width:16px; height:16px; flex-shrink:0;">
                     <label for="shellAuto" style="font-size:0.85em; color:#9ca3af; margin:0;">Auto-animate Shells</label>
                 </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input id="cameraLock2D" type="checkbox" style="width:16px; height:16px; flex-shrink:0;">
+                    <label for="cameraLock2D" style="font-size:0.85em; color:#9ca3af; margin:0;">Camera Lock 2D (Top)</label>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input id="cameraLockFront" type="checkbox" style="width:16px; height:16px; flex-shrink:0;">
+                    <label for="cameraLockFront" style="font-size:0.85em; color:#9ca3af; margin:0;">Camera Lock Front</label>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input id="cameraLockSide" type="checkbox" style="width:16px; height:16px; flex-shrink:0;">
+                    <label for="cameraLockSide" style="font-size:0.85em; color:#9ca3af; margin:0;">Camera Lock Side</label>
+                </div>
+            </div>
             </div>
         </div>
 
@@ -163,32 +247,119 @@
         </div>
     </div>
 
+    <div id="ui-right">
+        <button id="minimize-btn-right" title="Toggle UI">M</button>
+        <h3 style="margin: 0 0 15px 0; color: #2563eb;">Function & Integral</h3>
+        
+        <div class="input-group">
+            <label>FUNCTION f(x, z)</label>
+            <input type="text" id="funcInput" value="Math.cos(x)*Math.sin(z)*2" spellcheck="false">
+        </div>
+
+        <div class="btn-grid">
+            <button id="btnNormal" class="mode-btn active">Surface f(x,z)</button>
+            <button id="btnDeriv" class="mode-btn">Partial ∂f/∂x</button>
+            <button id="btnDouble" class="mode-btn">Double ∫∫</button>
+            <button id="btnTriple" class="mode-btn">Triple ∫∫∫</button>
+            <button id="btnShell" class="mode-btn">Shell Method</button>
+        </div>
+
+        <div id="math-display">
+            <strong>Logic:</strong> <span id="logicText">Showing Surface</span>
+            <div id="formula" style="color: #4ade80; margin-top: 5px; font-family: serif; font-style: italic;">y = f(x, z)</div>
+        </div>
+
+        <div class="input-group">
+            <label>PRESETS</label>
+            <select id="presetSelect" style="width: 100%; background: #222; color: #4ade80; border: 1px solid #444; padding: 8px; border-radius: 4px;">
+                <option value="">-- Choose a Shape --</option>
+                <option value="Math.cos(Math.sqrt(x*x + z*z)) * 2">The Ripple (Polar Wave)</option>
+                <option value="Math.exp(-(x*x + z*z) / 10) * 8">The Bell Curve (Gaussian)</option>
+                <option value="(x*x - z*z) / 4">The Saddle (Hyperbolic)</option>
+                <option value="Math.sin(x) * Math.cos(z) * 3">Egg Crate</option>
+                <option value="Math.abs(x)">The Cone (Best for Shells)</option>
+                <option value="Math.sqrt(Math.max(0, 25 - (x*x + z*z)))">The Hemisphere</option>
+                <option value="Math.sin(x) * Math.sin(z) * 3">Wave Interference</option>
+                <option value="Math.exp(-0.1*(x*x + z*z)) * Math.cos(2*Math.sqrt(x*x + z*z))">Damped Oscillation</option>
+                <option value="Math.sqrt(x*x + z*z) / 2">The Cone Smooth</option>
+                <option value="Math.sin(x)*Math.cos(z) + Math.cos(x)*Math.sin(z)">Sine Product Sum</option>
+                <option value="(x*x + z*z) / 10">Paraboloid</option>
+                <option value="Math.tanh(x) * Math.tanh(z) * 3">Smooth Step</option>
+                <option value="Math.sin(x*z) * 2">Cross Sine</option>
+                <option value="1 / (0.5 + x*x + z*z)">Gaussian Peak</option>
+                <option value="Math.cos(x) + Math.sin(z)">Simple Wave</option>
+                <option value="Math.max(0, 4 - Math.abs(x) - Math.abs(z))">Pyramid</option>
+            </select>
+            <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                <div style="flex:1; text-align:left; color:#9ca3af; font-size:0.8em;">Choose then click</div>
+                <button id="loadPresetBtn" class="mode-btn" style="padding:6px; font-size:0.82em;">Load Preset</button>
+            </div>
+            <div id="status" style="transition:opacity 240ms; opacity:0; font-size:0.82em; color:#a3e635; margin-top:6px;">&nbsp;</div>
+        </div>
+    </div>
+
+    <div style="position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+        <button id="minimapToggle" style="width: 30px; height: 24px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 0.7em; font-weight: bold; padding: 2px;">2D Map</button>
+        <canvas id="minimap" width="200" height="200"></canvas>
+    </div>
+
     <script>
+        // ========================================
+        // 3D CALCULUS LAB - INTERACTIVE VISUALIZATION
+        // Visualizes surfaces, partial derivatives, double/triple integrals, and shell method
+        // ========================================
+
+        // ==================== GLOBAL STATE ====================
         let scene, camera, renderer, graphObject, volumeObject;
         let theta = Math.PI / 4, phi = Math.PI / 3, radius = 25;
         const keys = {};
         let currentMode = 'normal';
-        
+        let minimapMode = 'heatmap'; // 'heatmap' or 'curve'
         let isMouseDown = false;
         let prevMouseX = 0, prevMouseY = 0;
-// Initialize Three.js Scene
+        let sweepAngle = 0; // Animation progress for shell method
+        let statusTimer = null;
+
+        // ==================== INITIALIZATION ====================
+        /**
+         * Initialize Three.js scene, camera, renderer, and event listeners
+         */
         function init() {
+            // Setup scene, camera, and renderer
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
 
+            // Add visual helpers
             scene.add(new THREE.GridHelper(30, 30, 0x333333, 0x222222));
             scene.add(new THREE.AxesHelper(15));
 
+            // Setup lighting
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             const sun = new THREE.DirectionalLight(0xffffff, 0.8);
             sun.position.set(10, 20, 10);
             scene.add(sun);
 
+            // Register event listeners
+            setupEventListeners();
+
+            // Wire up UI controls
+            setupUIControls();
+
+            // Initial render
+            updateGraph();
+            updateCamera();
+            drawMinimap();
+            animate();
+        }
+
+        /**
+         * Setup all keyboard, mouse, and window event listeners
+         */
+        function setupEventListeners() {
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('keydown', (e) => keys[e.code] = true);
             window.addEventListener('keyup', (e) => keys[e.code] = false);
@@ -196,26 +367,23 @@
             window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
             window.addEventListener('wheel', onWheel, { passive: false });
+        }
 
-            // Wire function input so it still updates the graph and syncs preset selection
+        /**
+         * Setup all UI control interactions (buttons, sliders, inputs, etc.)
+         */
+        function setupUIControls() {
+            // Function input and preset sync
             const funcInput = document.getElementById('funcInput');
             const preset = document.getElementById('presetSelect');
-            function syncPresetSelection() {
-                if (!preset) return;
-                const val = funcInput.value.trim();
-                let matched = false;
-                for (let i = 0; i < preset.options.length; i++) {
-                    if (preset.options[i].value === val) {
-                        preset.selectedIndex = i;
-                        matched = true;
-                        break;
-                    }
-                }
-                if (!matched) preset.selectedIndex = 0;
-            }
+
             if (funcInput) {
-                funcInput.addEventListener('input', () => { updateGraph(); syncPresetSelection(); });
+                funcInput.addEventListener('input', () => { 
+                    updateGraph(); 
+                    syncPresetSelection(); 
+                });
             }
+
             if (preset) {
                 preset.addEventListener('change', (e) => {
                     const v = e.target.value;
@@ -226,97 +394,182 @@
                     }
                 });
             }
+
             const loadBtn = document.getElementById('loadPresetBtn');
-            if (loadBtn && preset) loadBtn.onclick = () => {
-                const v = preset.value;
-                const label = preset.options[preset.selectedIndex] ? preset.options[preset.selectedIndex].text : '';
-                if (v) {
-                    if (confirm(`Load preset "${label}" into the function input?`)) {
-                        funcInput.value = v;
-                        updateGraph();
-                        showStatus('Loaded preset: ' + label);
-                    } else {
-                        showStatus('Load canceled');
+            if (loadBtn && preset) {
+                loadBtn.onclick = () => {
+                    const v = preset.value;
+                    const label = preset.options[preset.selectedIndex]?.text || '';
+                    if (v) {
+                        if (confirm(`Load preset "${label}" into the function input?`)) {
+                            funcInput.value = v;
+                            updateGraph();
+                            showStatus('Loaded preset: ' + label);
+                        } else {
+                            showStatus('Load canceled');
+                        }
                     }
-                }
-            };
-            // initial sync in case the default funcInput matches a preset
+                };
+            }
+
             syncPresetSelection();
 
-            // Visualization control wiring (ensure controls exist)
-            const tripleRes = document.getElementById('tripleRes');
-            const tripleResVal = document.getElementById('tripleResVal');
-            const particleSize = document.getElementById('particleSize');
-            const particleSizeVal = document.getElementById('particleSizeVal');
-            const particleOpacity = document.getElementById('particleOpacity');
-            const particleOpacityVal = document.getElementById('particleOpacityVal');
-            const shellSpeed = document.getElementById('shellSpeed');
-            const shellSpeedVal = document.getElementById('shellSpeedVal');
-            const shellAuto = document.getElementById('shellAuto');
-            if (tripleRes && tripleResVal) {
-                tripleResVal.textContent = tripleRes.value;
-                tripleRes.addEventListener('input', () => { tripleResVal.textContent = tripleRes.value; updateGraph(); });
-            }
-            if (particleSize && particleSizeVal) {
-                particleSizeVal.textContent = parseFloat(particleSize.value).toFixed(2);
-                particleSize.addEventListener('input', () => { particleSizeVal.textContent = parseFloat(particleSize.value).toFixed(2); updateGraph(); });
-            }
-            if (particleOpacity && particleOpacityVal) {
-                particleOpacityVal.textContent = parseFloat(particleOpacity.value).toFixed(2);
-                particleOpacity.addEventListener('input', () => { particleOpacityVal.textContent = parseFloat(particleOpacity.value).toFixed(2); updateGraph(); });
-            }
-            if (shellSpeed && shellSpeedVal) {
-                shellSpeedVal.textContent = parseFloat(shellSpeed.value).toFixed(2);
-                shellSpeed.addEventListener('input', () => { shellSpeedVal.textContent = parseFloat(shellSpeed.value).toFixed(2); });
-            }
+            // Visualization control sliders
+            setupSlider('tripleRes', 'tripleResVal', () => updateGraph());
+            setupSlider('particleSize', 'particleSizeVal', () => updateGraph(), true);
+            setupSlider('particleOpacity', 'particleOpacityVal', () => updateGraph(), true);
+            setupSlider('shellSpeed', 'shellSpeedVal', () => {});
 
+            // Camera lock checkboxes
+            ['cameraLock2D', 'cameraLockFront', 'cameraLockSide'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', () => updateCamera());
+            });
+
+            // Mode buttons
             document.getElementById('btnNormal').onclick = () => setMode('normal');
             document.getElementById('btnDeriv').onclick = () => setMode('deriv');
             document.getElementById('btnDouble').onclick = () => setMode('double');
             document.getElementById('btnTriple').onclick = () => setMode('triple');
             document.getElementById('btnShell').onclick = () => setMode('shell');
-            
-            const ui = document.getElementById('ui'), minBtn = document.getElementById('minimize-btn');
+
+            // Panel minimize buttons
+            const ui = document.getElementById('ui');
+            const minBtn = document.getElementById('minimize-btn');
             minBtn.onclick = () => {
                 ui.classList.toggle('minimized');
                 minBtn.textContent = ui.classList.contains('minimized') ? "➔" : "M";
             };
 
-            updateGraph();
-            updateCamera();
-            animate();
+            const uiRight = document.getElementById('ui-right');
+            const minBtnRight = document.getElementById('minimize-btn-right');
+            minBtnRight.onclick = () => {
+                uiRight.classList.toggle('minimized');
+                minBtnRight.textContent = uiRight.classList.contains('minimized') ? "➔" : "M";
+            };
+
+            // Minimap toggle
+            const minimapToggleBtn = document.getElementById('minimapToggle');
+            if (minimapToggleBtn) {
+                minimapToggleBtn.onclick = () => {
+                    minimapMode = minimapMode === 'heatmap' ? 'curve' : 'heatmap';
+                    minimapToggleBtn.textContent = minimapMode === 'heatmap' ? '2D Map' : '1D Curve';
+                    drawMinimap();
+                };
+            }
         }
 
-        function onMouseDown(e) { if (e.target.tagName === 'CANVAS') { isMouseDown = true; prevMouseX = e.clientX; prevMouseY = e.clientY; } }
+        /**
+         * Helper: Setup a slider control with label updates
+         */
+        function setupSlider(sliderId, labelId, callback, isFloat = false) {
+            const slider = document.getElementById(sliderId);
+            const label = document.getElementById(labelId);
+            if (!slider || !label) return;
+
+            const value = isFloat ? parseFloat(slider.value).toFixed(2) : slider.value;
+            label.textContent = value;
+            
+            slider.addEventListener('input', () => {
+                const v = isFloat ? parseFloat(slider.value).toFixed(2) : slider.value;
+                label.textContent = v;
+                callback();
+            });
+        }
+
+        /**
+         * Sync preset dropdown with current function input value
+         */
+        function syncPresetSelection() {
+            const funcInput = document.getElementById('funcInput');
+            const preset = document.getElementById('presetSelect');
+            if (!preset || !funcInput) return;
+
+            const val = funcInput.value.trim();
+            let matched = false;
+            for (let i = 0; i < preset.options.length; i++) {
+                if (preset.options[i].value === val) {
+                    preset.selectedIndex = i;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) preset.selectedIndex = 0;
+        }
+
+        // ==================== USER INPUT HANDLING ====================
+        function onMouseDown(e) { 
+            if (e.target.tagName === 'CANVAS') { 
+                isMouseDown = true; 
+                prevMouseX = e.clientX; 
+                prevMouseY = e.clientY; 
+            } 
+        }
+
         function onMouseMove(e) {
             if (!isMouseDown) return;
             theta -= (e.clientX - prevMouseX) * 0.005;
             phi -= (e.clientY - prevMouseY) * 0.005;
-            prevMouseX = e.clientX; prevMouseY = e.clientY;
+            prevMouseX = e.clientX; 
+            prevMouseY = e.clientY;
             updateCamera();
         }
-        function onMouseUp() { isMouseDown = false; }
-        function onWheel(e) { e.preventDefault(); radius = Math.max(5, Math.min(150, radius + e.deltaY * 0.01)); updateCamera(); }
 
-        function setMode(mode) {
-            currentMode = mode;
-            sweepAngle = 0; // Reset animation
-            document.querySelectorAll('button.mode-btn').forEach(b => b.classList.remove('active'));
-            
-            const btnId = 'btn' + mode.charAt(0).toUpperCase() + mode.slice(1);
-            const btn = document.getElementById(btnId);
-            if (btn) btn.classList.add('active');
-            
-            updateGraph();
+        function onMouseUp() { 
+            isMouseDown = false; 
         }
 
+        function onWheel(e) { 
+            e.preventDefault(); 
+            radius = Math.max(5, Math.min(150, radius + e.deltaY * 0.01)); 
+            updateCamera(); 
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function handleInput() {
+            // Disable keyboard input when any camera lock is active
+            const cameraLock2D = document.getElementById('cameraLock2D');
+            const cameraLockFront = document.getElementById('cameraLockFront');
+            const cameraLockSide = document.getElementById('cameraLockSide');
+            if ((cameraLock2D?.checked) || (cameraLockFront?.checked) || (cameraLockSide?.checked)) {
+                return;
+            }
+
+            let moved = false;
+            if (keys['KeyW']) { phi -= 0.03; moved = true; }
+            if (keys['KeyS']) { phi += 0.03; moved = true; }
+            if (keys['KeyA']) { theta -= 0.03; moved = true; }
+            if (keys['KeyD']) { theta += 0.03; moved = true; }
+            if (moved) updateCamera();
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+        /**
+         * Safely evaluate mathematical expression
+         * @param {number} x - X coordinate
+         * @param {number} z - Z coordinate
+         * @returns {number} Function value at (x, z)
+         */
         function safeEval(x, z) {
             try {
                 const expr = document.getElementById('funcInput').value;
-                return eval(expr.replace(/x/g, `(${x})`).replace(/z/g, `(${z})`));
-            } catch (e) { return 0; }
+                const fn = new Function('x', 'z', 'Math', `return (${expr});`);
+                const v = fn(x, z, Math);
+                return (typeof v === 'number' && isFinite(v)) ? v : 0;
+            } catch (e) {
+                console.warn('safeEval error:', e);
+                return 0;
+            }
         }
 
+        /**
+         * Properly dispose Three.js geometries and materials
+         */
         function disposeObject(obj) {
             if (!obj) return;
             obj.traverse(node => {
@@ -332,8 +585,9 @@
             scene.remove(obj);
         }
 
-        // Small transient status/tooltip area for user feedback
-        let statusTimer = null;
+        /**
+         * Show temporary status message to user
+         */
         function showStatus(msg, ms = 1800) {
             let el = document.getElementById('status');
             if (!el) return;
@@ -343,61 +597,90 @@
             statusTimer = setTimeout(() => { el.style.opacity = '0'; }, ms);
         }
 
+        // ==================== MODE & GRAPH MANAGEMENT ====================
+        /**
+         * Set visualization mode and update display
+         */
+        function setMode(mode) {
+            currentMode = mode;
+            sweepAngle = 0; // Reset animation
+            document.querySelectorAll('button.mode-btn').forEach(b => b.classList.remove('active'));
+            
+            const btnId = 'btn' + mode.charAt(0).toUpperCase() + mode.slice(1);
+            const btn = document.getElementById(btnId);
+            if (btn) btn.classList.add('active');
+            
+            updateGraph();
+        }
 
+        /**
+         * Update graph visualization based on current mode
+         */
         function updateGraph() {
-            // Clean up old objects properly before creating new ones
+            // Clean up previous objects
             disposeObject(graphObject);
+    graphObject = null;
             disposeObject(volumeObject);
+    volumeObject = null;
 
-            const size = 10, res = 30; // Resolution
-            const step = (size * 2) / res;
+            const size = 10, res = 30;
             const logicText = document.getElementById('logicText');
             const formula = document.getElementById('formula');
 
-            if (currentMode === 'normal') {
-                logicText.innerText = "Surface Visualization";
-                formula.innerHTML = "y = f(x, z)";
-                createSurface(size, res);
-            } 
-            else if (currentMode === 'deriv') {
-                logicText.innerText = "Partial Derivative ∂f/∂x";
-                formula.innerHTML = "y = [f(x+h, z) - f(x, z)] / h";
-                createSurface(size, res, 'deriv');
+            switch(currentMode) {
+                case 'normal':
+                    logicText.innerText = "Surface Visualization";
+                    formula.innerHTML = "y = f(x, z)";
+                    createSurface(size, res);
+                    break;
+                case 'deriv':
+                    logicText.innerText = "Partial Derivative ∂f/∂x";
+                    formula.innerHTML = "y = [f(x+h, z) - f(x, z)] / h";
+                    createSurface(size, res, 'deriv');
+                    break;
+                case 'double':
+                    logicText.innerText = "Double Integral (Signed Area)";
+                    formula.innerHTML = "V = ∫∫ f(x, z) dx dz";
+                    createSurface(size, res);
+                    createVolume(size, res);
+                    break;
+                case 'triple':
+                    logicText.innerText = "Triple Integral (Volume Under Surface)";
+                    formula.innerHTML = "V = ∫∫ f(x, z) dA";
+                    const triEl = document.getElementById('tripleRes');
+                    const triRes = triEl ? parseInt(triEl.value) : 24;
+                    createVolumetricCloud(size, triRes);
+                    break;
+                case 'shell':
+                    logicText.innerText = "Cylindrical Shells (Washer Method)";
+                    formula.innerHTML = "V = ∫ 2π r h(r) dr";
+                    createShells(size, 20);
+                    break;
             }
-            else if (currentMode === 'double') {
-                logicText.innerText = "Double Integral (Signed Area)";
-                formula.innerHTML = "V = ∫∫ f(x, z) dx dz";
-                createSurface(size, res);
-                createVolume(size, res); // Show slabs
-            }
-            else if (currentMode === 'triple') {
-                logicText.innerText = "Triple Integral (Density/Mass)";
-                formula.innerHTML = "M = ∫∫∫ ρ(x, y, z) dV";
-                const triEl = document.getElementById('tripleRes');
-                const triRes = triEl ? parseInt(triEl.value) : 24;
-                createVolumetricCloud(size, triRes); // Density field
-            }
-            else if (currentMode === 'shell') {
-                logicText.innerText = "Cylindrical Shells (Rotation)";
-                formula.innerHTML = "V = ∫ 2π r f(r) dr";
-                createShells(size, 20); // 20 shells for clarity
-            }
+
+            drawMinimap();
         }
-// Create Surface Mesh
+
+        // ==================== GRAPH CREATION ====================
+        /**
+         * Create and render surface mesh
+         */
         function createSurface(size, res, type = 'normal') {
             const geometry = new THREE.PlaneGeometry(size*2, size*2, res, res);
-            geometry.rotateX(-Math.PI / 2); // Lay flat on XZ
+            geometry.rotateX(-Math.PI / 2); // Lay flat on XZ plane
             
             const pos = geometry.attributes.position;
-            const h = 0.05;
+            const h = 0.01; // Step size for derivative approximation
 
+            // Update vertex positions based on function values
             for (let i = 0; i < pos.count; i++) {
                 let x = pos.getX(i);
                 let z = pos.getZ(i);
                 let y = 0;
 
                 if (type === 'deriv') {
-                    y = (safeEval(x + h, z) - safeEval(x, z)) / h;
+                    // Centered difference formula for derivative
+                    y = (safeEval(x + h, z) - safeEval(x - h, z)) / (2 * h);
                 } else {
                     y = safeEval(x, z);
                 }
@@ -417,12 +700,14 @@
             scene.add(graphObject);
         }
         
-// Create Volume Representation for Double Integral
+        /**
+         * Create volume representation for double integral visualization
+         */
         function createVolume(size, res) {
             const group = new THREE.Group();
             const step = (size * 2) / res;
             
-            // Draw "slabs" to represent the Double Integral volume
+            // Draw rectangular slabs to show volume under surface
             for (let i = 0; i < res; i++) {
                 for (let j = 0; j < res; j++) {
                     const x = -size + i * step + step/2;
@@ -446,141 +731,440 @@
             scene.add(volumeObject);
         }
 
-// Create Volumetric Cloud for Triple Integral
+        /**
+         * Create volumetric cloud particles for triple integral visualization
+         */
         function createVolumetricCloud(size, res) {
-    // Dispose any previous volumetric object to avoid leaks
-    if (volumeObject) disposeObject(volumeObject);
+            if (volumeObject) disposeObject(volumeObject);
+    volumeObject = null;
 
-    const step = (size * 2) / res;
-    const points = [];
-    const yStep = Math.max(0.08, step * 0.4);
+            const step = (size * 2) / res;
+            const points = [];
+            const samplesPerUnit = 8;
 
-    // Sample (x,z) grid; for each (x,z) if density>0, fill vertical samples 0..density
-    for (let i = 0; i < res; i++) {
-        for (let k = 0; k < res; k++) {
-            const x = -size + i * step + step / 2;
-            const z = -size + k * step + step / 2;
-            const density = safeEval(x, z);
-            if (!(density > 0)) continue;
+            // Sample (x,z) grid and adaptively fill vertical samples
+            for (let i = 0; i < res; i++) {
+                for (let k = 0; k < res; k++) {
+                    const x = -size + i * step + step / 2;
+                    const z = -size + k * step + step / 2;
+                    const density = safeEval(x, z);
+                    if (!(density > 0)) continue;
 
-            const maxY = Math.min(density, size);
-            for (let y = yStep / 2; y <= maxY; y += yStep) {
-                points.push({ x, y, z });
+                    const maxY = Math.min(density, size);
+                    const numSamples = Math.max(2, Math.floor(density * samplesPerUnit));
+                    for (let j = 0; j < numSamples; j++) {
+                        // Midpoint rule sampling
+                        const y = (j + 0.5) * (maxY / numSamples);
+                        points.push({ x, y, z });
+                    }
+                }
+            }
+
+            if (points.length === 0) return;
+
+            // Use InstancedMesh for efficient rendering of many particles
+            const pSizeEl = document.getElementById('particleSize');
+            const pOpEl = document.getElementById('particleOpacity');
+            const pSize = pSizeEl ? parseFloat(pSizeEl.value) : 0.08;
+            const pOp = pOpEl ? parseFloat(pOpEl.value) : 0.6;
+            
+            const dotGeo = new THREE.SphereGeometry(pSize, 6, 6);
+            const dotMat = new THREE.MeshBasicMaterial({ 
+                color: 0x4ade80, 
+                transparent: true, 
+                opacity: pOp 
+            });
+            const instancedMesh = new THREE.InstancedMesh(dotGeo, dotMat, points.length);
+            const dummy = new THREE.Object3D();
+
+            points.forEach((p, i) => {
+                dummy.position.set(p.x, p.y, p.z);
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i, dummy.matrix);
+            });
+            instancedMesh.instanceMatrix.needsUpdate = true;
+
+            volumeObject = instancedMesh;
+            scene.add(volumeObject);
+        }
+
+        /**
+         * Create shell method (cylindrical shells) visualization
+         */
+        function createShells(size, res, angle = Math.PI * 2) {
+            if (volumeObject) disposeObject(volumeObject);
+    volumeObject = null;
+
+            const group = new THREE.Group();
+            const step = size / res;
+            const circumferenceSamples = 8; // Sample points around shell
+
+            for (let i = 1; i <= res; i++) {
+                const r = i * step;
+                
+                // Average height around circumference
+                let heightSum = 0;
+                for (let j = 0; j < circumferenceSamples; j++) {
+                    const shellTheta = (j / circumferenceSamples) * Math.PI * 2;
+                    const x = r * Math.cos(shellTheta);
+                    const z = r * Math.sin(shellTheta);
+                    heightSum += Math.abs(safeEval(x, z));
+                }
+                const height = heightSum / circumferenceSamples;
+                
+                if (height < 0.01) continue;
+
+                // CylinderGeometry: radius, height, segments, openEnded, thetaStart, thetaLength
+                const geo = new THREE.CylinderGeometry(r, r, height, 32, 1, true, 0, angle);
+                const mat = new THREE.MeshPhongMaterial({
+                    color: new THREE.Color().setHSL(i / res, 0.8, 0.5),
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.6
+                });
+
+                const shell = new THREE.Mesh(geo, mat);
+                shell.position.set(0, height / 2, 0);
+                group.add(shell);
+            }
+
+            volumeObject = group;
+            scene.add(volumeObject);
+        }
+
+        // ==================== CAMERA CONTROL ====================
+        /**
+         * Update camera position based on controls or locked view
+         */
+        function updateCamera() {
+            const cameraLock2D = document.getElementById('cameraLock2D');
+            const cameraLockFront = document.getElementById('cameraLockFront');
+            const cameraLockSide = document.getElementById('cameraLockSide');
+            
+            if (cameraLock2D?.checked) {
+                // Top-down orthographic-like view
+                camera.position.set(0, 35, 0);
+                camera.lookAt(0, 0, 0);
+            } else if (cameraLockFront?.checked) {
+                // Front view (XY plane)
+                camera.position.set(0, 0, 35);
+                camera.lookAt(0, 0, 0);
+            } else if (cameraLockSide?.checked) {
+                // Side view (YZ plane)
+                camera.position.set(35, 0, 0);
+                camera.lookAt(0, 0, 0);
+            } else {
+                // Free orbit mode
+                phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
+                camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
+                camera.position.y = radius * Math.cos(phi);
+                camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
+                camera.lookAt(0, 0, 0);
             }
         }
-    }
 
-    if (points.length === 0) return;
-
-    const pSizeEl = document.getElementById('particleSize');
-    const pOpEl = document.getElementById('particleOpacity');
-    const pSize = pSizeEl ? parseFloat(pSizeEl.value) : 0.08;
-    const pOp = pOpEl ? parseFloat(pOpEl.value) : 0.6;
-    const dotGeo = new THREE.SphereGeometry(pSize, 6, 6);
-    const dotMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: pOp });
-    const instancedMesh = new THREE.InstancedMesh(dotGeo, dotMat, points.length);
-    const dummy = new THREE.Object3D();
-
-    points.forEach((p, i) => {
-        dummy.position.set(p.x, p.y, p.z);
-        dummy.updateMatrix();
-        instancedMesh.setMatrixAt(i, dummy.matrix);
-    });
-    instancedMesh.instanceMatrix.needsUpdate = true;
-
-    volumeObject = instancedMesh;
-    scene.add(volumeObject);
-}
-
-        let sweepAngle = 0; // Global variable to track animation progress
-
-        function createShells(size, res, angle = Math.PI * 2) {
-    // Crucial: Clear the old volumeObject before redraw to prevent memory leaks
-    if (volumeObject) {
-        volumeObject.traverse(child => {
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
-        });
-        scene.remove(volumeObject);
-    }
-
-    const group = new THREE.Group();
-    const step = size / res;
-
-    for (let i = 1; i <= res; i++) {
-        const r = i * step;
-        const height = Math.abs(safeEval(r, 0));
-        
-        if (height < 0.01) continue;
-
-        // Args: radiusTop, radiusBottom, height, radialSegments, heightSegments, 
-        //       openEnded, thetaStart, thetaLength (the sweep angle)
-        const geo = new THREE.CylinderGeometry(r, r, height, 32, 1, true, 0, angle);
-        const mat = new THREE.MeshPhongMaterial({
-            color: new THREE.Color().setHSL(i / res, 0.8, 0.5),
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.6
-        });
-
-        const shell = new THREE.Mesh(geo, mat);
-        shell.position.set(0, height / 2, 0);
-        group.add(shell);
-    }
-
-    volumeObject = group;
-    scene.add(volumeObject);
-}
-
-        function updateCamera() {
-            phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
-            camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
-            camera.position.y = radius * Math.cos(phi);
-            camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
-            camera.lookAt(0, 0, 0);
+        // ==================== MINIMAP RENDERING ====================
+        /**
+         * Draw appropriate minimap (heatmap or curve)
+         */
+        function drawMinimap() {
+            if (minimapMode === 'heatmap') {
+                drawMinimapHeatmap();
+            } else {
+                drawMinimapCurve();
+            }
         }
 
-        function handleInput() {
-            let moved = false;
-            if (keys['KeyW']) { phi -= 0.03; moved = true; }
-            if (keys['KeyS']) { phi += 0.03; moved = true; }
-            if (keys['KeyA']) { theta -= 0.03; moved = true; }
-            if (keys['KeyD']) { theta += 0.03; moved = true; }
-            if (moved) updateCamera();
+        /**
+         * Draw 2D heatmap of function values in XZ plane
+         */
+        function drawMinimapHeatmap() {
+            const canvas = document.getElementById('minimap');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            const size = 10, res = 40;
+            const step = (size * 2) / res;
+
+            // Clear and find value range
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, w, h);
+
+            let minVal = Infinity, maxVal = -Infinity;
+            for (let i = 0; i < res; i++) {
+                for (let j = 0; j < res; j++) {
+                    const x = -size + i * step + step / 2;
+                    const z = -size + j * step + step / 2;
+                    const val = safeEval(x, z);
+                    if (isFinite(val)) {
+                        minVal = Math.min(minVal, val);
+                        maxVal = Math.max(maxVal, val);
+                    }
+                }
+            }
+
+            if (!isFinite(minVal) || !isFinite(maxVal)) {
+                minVal = -5;
+                maxVal = 5;
+            }
+
+            // Add 5% padding
+            const range = maxVal - minVal;
+            const padding = range * 0.05;
+            minVal -= padding;
+            maxVal += padding;
+
+            // Draw heatmap cells with color gradient
+            for (let i = 0; i < res; i++) {
+                for (let j = 0; j < res; j++) {
+                    const x = -size + i * step + step / 2;
+                    const z = -size + j * step + step / 2;
+                    const val = safeEval(x, z);
+                    
+                    let normalized = (val - minVal) / (maxVal - minVal);
+                    normalized = Math.max(0, Math.min(1, normalized));
+                    
+                    // Color: blue → cyan → green → yellow → red
+                    let color = getHeatmapColor(normalized);
+                    
+                    ctx.fillStyle = color;
+                    const canvasX = (i / res) * w;
+                    const canvasY = (j / res) * h;
+                    ctx.fillRect(canvasX, canvasY, w / res + 1, h / res + 1);
+                }
+            }
+
+            // Draw grid and axes
+            drawMinimapGrid(ctx, w, h, res, 5);
+            drawMinimapAxes(ctx, w, h);
+            drawMinimapLegend(ctx, w, h, minVal, maxVal);
         }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        /**
+         * Draw 1D curve along X axis at Z=0
+         */
+        function drawMinimapCurve() {
+            const canvas = document.getElementById('minimap');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            const size = 10, res = 80;
+            const step = (size * 2) / res;
+
+            // Clear and find value range
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, w, h);
+
+            let minVal = Infinity, maxVal = -Infinity;
+            for (let i = 0; i <= res; i++) {
+                const x = -size + i * step;
+                const y = safeEval(x, 0); // z=0 slice
+                if (isFinite(y)) {
+                    minVal = Math.min(minVal, y);
+                    maxVal = Math.max(maxVal, y);
+                }
+            }
+
+            if (!isFinite(minVal) || !isFinite(maxVal)) {
+                minVal = -5;
+                maxVal = 5;
+            }
+
+            // Add 10% padding
+            const range = maxVal - minVal;
+            const padding = range * 0.1;
+            minVal -= padding;
+            maxVal += padding;
+
+            // Draw grid
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= res; i += 10) {
+                const x = (i / res) * w;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= 10; i++) {
+                const y = (i / 10) * h;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // Setup scaling
+            const centerX = 0, centerY = h / 2;
+            const scaleX = w / (size * 2);
+            const scaleY = h / (maxVal - minVal);
+
+            // Draw curve
+            ctx.strokeStyle = '#4ade80';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+
+            let first = true;
+            for (let i = 0; i <= res; i++) {
+                const x = -size + i * step;
+                const y = safeEval(x, 0);
+                
+                const canvasX = centerX + (x + size) * scaleX;
+                const canvasY = centerY - (y - minVal - (maxVal - minVal) / 2) * scaleY;
+
+                if (first) {
+                    ctx.moveTo(canvasX, canvasY);
+                    first = false;
+                } else {
+                    ctx.lineTo(canvasX, canvasY);
+                }
+            }
+            ctx.stroke();
+
+            // Draw axes
+            const axisY = centerY + ((maxVal - minVal) / 2) * scaleY;
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, axisY);
+            ctx.lineTo(w, axisY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(centerX + size * scaleX, 0);
+            ctx.lineTo(centerX + size * scaleX, h);
+            ctx.stroke();
+
+            // Draw labels
+            ctx.fillStyle = '#888';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText('X', w - 5, axisY - 5);
+            ctx.textAlign = 'left';
+            ctx.fillText('Y', centerX + size * scaleX + 3, 12);
+
+            // Draw value range labels
+            ctx.fillStyle = '#666';
+            ctx.font = '8px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(maxVal.toFixed(1), 5, 10);
+            ctx.fillText(minVal.toFixed(1), 5, h - 2);
         }
 
+        /**
+         * Helper: Get heatmap color for normalized value [0,1]
+         */
+        function getHeatmapColor(normalized) {
+            if (normalized < 0.25) {
+                const t = normalized / 0.25;
+                const r = 0, g = Math.floor(t * 255), b = 255;
+                return `rgb(${r},${g},${b})`;
+            } else if (normalized < 0.5) {
+                const t = (normalized - 0.25) / 0.25;
+                const r = 0, g = 255, b = Math.floor((1 - t) * 255);
+                return `rgb(${r},${g},${b})`;
+            } else if (normalized < 0.75) {
+                const t = (normalized - 0.5) / 0.25;
+                const r = Math.floor(t * 255), g = 255, b = 0;
+                return `rgb(${r},${g},${b})`;
+            } else {
+                const t = (normalized - 0.75) / 0.25;
+                const r = 255, g = Math.floor((1 - t) * 255), b = 0;
+                return `rgb(${r},${g},${b})`;
+            }
+        }
+
+        /**
+         * Helper: Draw grid lines on minimap
+         */
+        function drawMinimapGrid(ctx, w, h, res, interval) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= res; i += interval) {
+                const x = (i / res) * w;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+                const y = (i / res) * h;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+        }
+
+        /**
+         * Helper: Draw axes on minimap
+         */
+        function drawMinimapAxes(ctx, w, h) {
+            const centerX = w / 2, centerY = h / 2;
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, h);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(w, centerY);
+            ctx.stroke();
+
+            ctx.fillStyle = '#aaa';
+            ctx.font = 'bold 11px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('X', w - 8, centerY - 8);
+            ctx.textAlign = 'right';
+            ctx.fillText('Z', centerX - 8, 14);
+        }
+
+        /**
+         * Helper: Draw color scale legend on minimap
+         */
+        function drawMinimapLegend(ctx, w, h, minVal, maxVal) {
+            const legWidth = 12, legHeight = 60;
+            const legX = w - legWidth - 4, legY = h - legHeight - 4;
+            for (let i = 0; i < legHeight; i++) {
+                const normalized = 1 - (i / legHeight);
+                let color = getHeatmapColor(normalized);
+                ctx.fillStyle = color;
+                ctx.fillRect(legX, legY + i, legWidth, 1);
+            }
+
+            ctx.fillStyle = '#888';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(maxVal.toFixed(1), legX + legWidth + 2, legY - 2);
+            ctx.fillText(minVal.toFixed(1), legX + legWidth + 2, legY + legHeight + 4);
+        }
+
+        // ==================== ANIMATION LOOP ====================
         function animate() {
             requestAnimationFrame(animate);
             handleInput();
 
-            // Animation Logic for Shell Method
+            // Shell method animation
             if (currentMode === 'shell') {
                 const autoEl = document.getElementById('shellAuto');
                 const speedEl = document.getElementById('shellSpeed');
                 const speed = speedEl ? parseFloat(speedEl.value) : 0.05;
                 const auto = autoEl ? autoEl.checked : true;
+                
                 if (auto) {
                     if (sweepAngle < Math.PI * 2) {
                         sweepAngle = Math.min(Math.PI * 2, sweepAngle + speed);
-                        createShells(10, 20, sweepAngle); // Redraw with new angle
+                        createShells(10, 20, sweepAngle);
                     }
                 } else {
-                    // If auto is off, show full shells immediately
                     createShells(10, 20, Math.PI * 2);
                 }
             } else {
-                sweepAngle = 0; // Reset for next time mode is toggled
+                sweepAngle = 0; // Reset for next mode switch
             }
 
             renderer.render(scene, camera);
         }
 
+        // ==================== STARTUP ====================
         window.onload = init;
     </script>
 </body>
