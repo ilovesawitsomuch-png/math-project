@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Calculus Lab</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Segoe UI', sans-serif; }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(15, 15, 15, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            width: 320px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+            z-index: 100;
+        }
+
+        #ui.minimized {
+            transform: translateX(-350px);
+            opacity: 0.5;
+        }
+
+        #minimize-btn {
+            position: absolute;
+            right: -40px;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            background: rgba(15, 15, 15, 0.9);
+            border: 1px solid #444;
+            border-radius: 0 6px 6px 0;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.75em; color: #aaa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        input {
+            width: 100%;
+            background: #222;
+            border: 1px solid #444;
+            color: #0f0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            box-sizing: border-box;
+        }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+        button.mode-btn {
+            padding: 8px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+        button.mode-btn:hover { background: #444; }
+        button.mode-btn.active { background: #2563eb; border-color: #3b82f6; }
+        #math-display {
+            margin-top: 15px;
+            padding: 10px;
+            background: #000;
+            border-radius: 4px;
+            font-size: 0.85em;
+            border-left: 3px solid #2563eb;
+        }
+        .legend { font-size: 0.7em; margin-top: 10px; opacity: 0.8; line-height: 1.4; }
+        .key { border: 1px solid #666; padding: 1px 4px; border-radius: 3px; font-size: 0.8em; }
+        canvas { display: block; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <button id="minimize-btn" title="Toggle UI">M</button>
+        <h3 style="margin: 0 0 15px 0; color: #2563eb;">3D Multivariable Lab</h3>
+        
+        <div class="input-group">
+            <label>FUNCTION f(x, z)</label>
+            <input type="text" id="funcInput" value="Math.cos(x)*Math.sin(z)*2" spellcheck="false">
+        </div>
+
+        <div class="input-group">
+            <label>PRESETS</label>
+            <select id="presetSelect" style="width: 100%; background: #222; color: #4ade80; border: 1px solid #444; padding: 8px; border-radius: 4px;">
+                <option value="">-- Choose a Shape --</option>
+                <option value="Math.cos(Math.sqrt(x*x + z*z)) * 2">The Ripple (Polar Wave)</option>
+                <option value="Math.exp(-(x*x + z*z) / 10) * 8">The Bell Curve (Gaussian)</option>
+                <option value="(x*x - z*z) / 4">The Saddle (Hyperbolic)</option>
+                <option value="Math.sin(x) * Math.cos(z) * 3">Egg Crate</option>
+                <option value="Math.abs(x)">The Cone (Best for Shells)</option>
+                <option value="Math.sqrt(Math.max(0, 25 - (x*x + z*z)))">The Hemisphere</option>
+            </select>
+            <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                <div style="flex:1; text-align:left; color:#9ca3af; font-size:0.8em;">Choose then click</div>
+                <button id="loadPresetBtn" class="mode-btn" style="padding:6px; font-size:0.82em;">Load Preset</button>
+            </div>
+            <div id="status" style="transition:opacity 240ms; opacity:0; font-size:0.82em; color:#a3e635; margin-top:6px;">&nbsp;</div>
+        </div>
+
+        <div class="btn-grid">
+            <button id="btnNormal" class="mode-btn active">Surface f(x,z)</button>
+            <button id="btnDeriv" class="mode-btn">Partial ∂f/∂x</button>
+            <button id="btnDouble" class="mode-btn">Double ∫∫</button>
+            <button id="btnTriple" class="mode-btn">Triple ∫∫∫</button>
+            <button id="btnShell" class="mode-btn">Shell Method</button>
+        </div>
+
+        <div id="math-display">
+            <strong>Logic:</strong> <span id="logicText">Showing Surface</span>
+            <div id="formula" style="color: #4ade80; margin-top: 5px; font-family: serif; font-style: italic;">y = f(x, z)</div>
+        </div>
+
+        <div class="input-group">
+            <label>VISUAL CONTROLS</label>
+            <div style="display:grid; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.85em; color:#9ca3af;">Triple Resolution</span>
+                    <input id="tripleRes" type="range" min="8" max="64" step="1" value="24" style="width:140px;">
+                    <span id="tripleResVal" style="width:30px; text-align:right; color:#cbd5e1;">24</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.85em; color:#9ca3af;">Particle Size</span>
+                    <input id="particleSize" type="range" min="0.04" max="0.3" step="0.01" value="0.08" style="width:140px;">
+                    <span id="particleSizeVal" style="width:30px; text-align:right; color:#cbd5e1;">0.08</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.85em; color:#9ca3af;">Particle Opacity</span>
+                    <input id="particleOpacity" type="range" min="0.1" max="1" step="0.05" value="0.6" style="width:140px;">
+                    <span id="particleOpacityVal" style="width:30px; text-align:right; color:#cbd5e1;">0.60</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.85em; color:#9ca3af;">Shell Speed</span>
+                    <input id="shellSpeed" type="range" min="0.01" max="0.25" step="0.01" value="0.05" style="width:140px;">
+                    <span id="shellSpeedVal" style="width:30px; text-align:right; color:#cbd5e1;">0.05</span>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input id="shellAuto" type="checkbox" checked>
+                    <label for="shellAuto" style="font-size:0.85em; color:#9ca3af; margin:0;">Auto-animate Shells</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <p><span class="key">Drag</span> Orbit | <span class="key">Scroll</span> Zoom</p>
+            <div style="color: #ff4444">X Axis | <span style="color: #4444ff">Z Axis</span> (Inputs)</div>
+            <div style="color: #44ff44">Y Axis (Function Value/Volume)</div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, graphObject, volumeObject;
+        let theta = Math.PI / 4, phi = Math.PI / 3, radius = 25;
+        const keys = {};
+        let currentMode = 'normal';
+        
+        let isMouseDown = false;
+        let prevMouseX = 0, prevMouseY = 0;
+// Initialize Three.js Scene
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            scene.add(new THREE.GridHelper(30, 30, 0x333333, 0x222222));
+            scene.add(new THREE.AxesHelper(15));
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+            sun.position.set(10, 20, 10);
+            scene.add(sun);
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', (e) => keys[e.code] = true);
+            window.addEventListener('keyup', (e) => keys[e.code] = false);
+            window.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('wheel', onWheel, { passive: false });
+
+            // Wire function input so it still updates the graph and syncs preset selection
+            const funcInput = document.getElementById('funcInput');
+            const preset = document.getElementById('presetSelect');
+            function syncPresetSelection() {
+                if (!preset) return;
+                const val = funcInput.value.trim();
+                let matched = false;
+                for (let i = 0; i < preset.options.length; i++) {
+                    if (preset.options[i].value === val) {
+                        preset.selectedIndex = i;
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched) preset.selectedIndex = 0;
+            }
+            if (funcInput) {
+                funcInput.addEventListener('input', () => { updateGraph(); syncPresetSelection(); });
+            }
+            if (preset) {
+                preset.addEventListener('change', (e) => {
+                    const v = e.target.value;
+                    if (v) {
+                        funcInput.value = v;
+                        updateGraph();
+                        showStatus('Preset applied: ' + preset.options[preset.selectedIndex].text);
+                    }
+                });
+            }
+            const loadBtn = document.getElementById('loadPresetBtn');
+            if (loadBtn && preset) loadBtn.onclick = () => {
+                const v = preset.value;
+                const label = preset.options[preset.selectedIndex] ? preset.options[preset.selectedIndex].text : '';
+                if (v) {
+                    if (confirm(`Load preset "${label}" into the function input?`)) {
+                        funcInput.value = v;
+                        updateGraph();
+                        showStatus('Loaded preset: ' + label);
+                    } else {
+                        showStatus('Load canceled');
+                    }
+                }
+            };
+            // initial sync in case the default funcInput matches a preset
+            syncPresetSelection();
+
+            // Visualization control wiring (ensure controls exist)
+            const tripleRes = document.getElementById('tripleRes');
+            const tripleResVal = document.getElementById('tripleResVal');
+            const particleSize = document.getElementById('particleSize');
+            const particleSizeVal = document.getElementById('particleSizeVal');
+            const particleOpacity = document.getElementById('particleOpacity');
+            const particleOpacityVal = document.getElementById('particleOpacityVal');
+            const shellSpeed = document.getElementById('shellSpeed');
+            const shellSpeedVal = document.getElementById('shellSpeedVal');
+            const shellAuto = document.getElementById('shellAuto');
+            if (tripleRes && tripleResVal) {
+                tripleResVal.textContent = tripleRes.value;
+                tripleRes.addEventListener('input', () => { tripleResVal.textContent = tripleRes.value; updateGraph(); });
+            }
+            if (particleSize && particleSizeVal) {
+                particleSizeVal.textContent = parseFloat(particleSize.value).toFixed(2);
+                particleSize.addEventListener('input', () => { particleSizeVal.textContent = parseFloat(particleSize.value).toFixed(2); updateGraph(); });
+            }
+            if (particleOpacity && particleOpacityVal) {
+                particleOpacityVal.textContent = parseFloat(particleOpacity.value).toFixed(2);
+                particleOpacity.addEventListener('input', () => { particleOpacityVal.textContent = parseFloat(particleOpacity.value).toFixed(2); updateGraph(); });
+            }
+            if (shellSpeed && shellSpeedVal) {
+                shellSpeedVal.textContent = parseFloat(shellSpeed.value).toFixed(2);
+                shellSpeed.addEventListener('input', () => { shellSpeedVal.textContent = parseFloat(shellSpeed.value).toFixed(2); });
+            }
+
+            document.getElementById('btnNormal').onclick = () => setMode('normal');
+            document.getElementById('btnDeriv').onclick = () => setMode('deriv');
+            document.getElementById('btnDouble').onclick = () => setMode('double');
+            document.getElementById('btnTriple').onclick = () => setMode('triple');
+            document.getElementById('btnShell').onclick = () => setMode('shell');
+            
+            const ui = document.getElementById('ui'), minBtn = document.getElementById('minimize-btn');
+            minBtn.onclick = () => {
+                ui.classList.toggle('minimized');
+                minBtn.textContent = ui.classList.contains('minimized') ? "➔" : "M";
+            };
+
+            updateGraph();
+            updateCamera();
+            animate();
+        }
+
+        function onMouseDown(e) { if (e.target.tagName === 'CANVAS') { isMouseDown = true; prevMouseX = e.clientX; prevMouseY = e.clientY; } }
+        function onMouseMove(e) {
+            if (!isMouseDown) return;
+            theta -= (e.clientX - prevMouseX) * 0.005;
+            phi -= (e.clientY - prevMouseY) * 0.005;
+            prevMouseX = e.clientX; prevMouseY = e.clientY;
+            updateCamera();
+        }
+        function onMouseUp() { isMouseDown = false; }
+        function onWheel(e) { e.preventDefault(); radius = Math.max(5, Math.min(150, radius + e.deltaY * 0.01)); updateCamera(); }
+
+        function setMode(mode) {
+            currentMode = mode;
+            sweepAngle = 0; // Reset animation
+            document.querySelectorAll('button.mode-btn').forEach(b => b.classList.remove('active'));
+            
+            const btnId = 'btn' + mode.charAt(0).toUpperCase() + mode.slice(1);
+            const btn = document.getElementById(btnId);
+            if (btn) btn.classList.add('active');
+            
+            updateGraph();
+        }
+
+        function safeEval(x, z) {
+            try {
+                const expr = document.getElementById('funcInput').value;
+                return eval(expr.replace(/x/g, `(${x})`).replace(/z/g, `(${z})`));
+            } catch (e) { return 0; }
+        }
+
+        function disposeObject(obj) {
+            if (!obj) return;
+            obj.traverse(node => {
+                if (node.geometry) node.geometry.dispose();
+                if (node.material) {
+                    if (Array.isArray(node.material)) {
+                        node.material.forEach(m => m.dispose());
+                    } else {
+                        node.material.dispose();
+                    }
+                }
+            });
+            scene.remove(obj);
+        }
+
+        // Small transient status/tooltip area for user feedback
+        let statusTimer = null;
+        function showStatus(msg, ms = 1800) {
+            let el = document.getElementById('status');
+            if (!el) return;
+            el.textContent = msg;
+            el.style.opacity = '1';
+            if (statusTimer) clearTimeout(statusTimer);
+            statusTimer = setTimeout(() => { el.style.opacity = '0'; }, ms);
+        }
+
+
+        function updateGraph() {
+            // Clean up old objects properly before creating new ones
+            disposeObject(graphObject);
+            disposeObject(volumeObject);
+
+            const size = 10, res = 30; // Resolution
+            const step = (size * 2) / res;
+            const logicText = document.getElementById('logicText');
+            const formula = document.getElementById('formula');
+
+            if (currentMode === 'normal') {
+                logicText.innerText = "Surface Visualization";
+                formula.innerHTML = "y = f(x, z)";
+                createSurface(size, res);
+            } 
+            else if (currentMode === 'deriv') {
+                logicText.innerText = "Partial Derivative ∂f/∂x";
+                formula.innerHTML = "y = [f(x+h, z) - f(x, z)] / h";
+                createSurface(size, res, 'deriv');
+            }
+            else if (currentMode === 'double') {
+                logicText.innerText = "Double Integral (Signed Area)";
+                formula.innerHTML = "V = ∫∫ f(x, z) dx dz";
+                createSurface(size, res);
+                createVolume(size, res); // Show slabs
+            }
+            else if (currentMode === 'triple') {
+                logicText.innerText = "Triple Integral (Density/Mass)";
+                formula.innerHTML = "M = ∫∫∫ ρ(x, y, z) dV";
+                const triEl = document.getElementById('tripleRes');
+                const triRes = triEl ? parseInt(triEl.value) : 24;
+                createVolumetricCloud(size, triRes); // Density field
+            }
+            else if (currentMode === 'shell') {
+                logicText.innerText = "Cylindrical Shells (Rotation)";
+                formula.innerHTML = "V = ∫ 2π r f(r) dr";
+                createShells(size, 20); // 20 shells for clarity
+            }
+        }
+// Create Surface Mesh
+        function createSurface(size, res, type = 'normal') {
+            const geometry = new THREE.PlaneGeometry(size*2, size*2, res, res);
+            geometry.rotateX(-Math.PI / 2); // Lay flat on XZ
+            
+            const pos = geometry.attributes.position;
+            const h = 0.05;
+
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i);
+                let z = pos.getZ(i);
+                let y = 0;
+
+                if (type === 'deriv') {
+                    y = (safeEval(x + h, z) - safeEval(x, z)) / h;
+                } else {
+                    y = safeEval(x, z);
+                }
+                pos.setY(i, y);
+            }
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshPhongMaterial({
+                color: type === 'deriv' ? 0xff4444 : 0x00ff88,
+                wireframe: true,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            graphObject = new THREE.Mesh(geometry, material);
+            scene.add(graphObject);
+        }
+        
+// Create Volume Representation for Double Integral
+        function createVolume(size, res) {
+            const group = new THREE.Group();
+            const step = (size * 2) / res;
+            
+            // Draw "slabs" to represent the Double Integral volume
+            for (let i = 0; i < res; i++) {
+                for (let j = 0; j < res; j++) {
+                    const x = -size + i * step + step/2;
+                    const z = -size + j * step + step/2;
+                    const y = safeEval(x, z);
+                    
+                    if (Math.abs(y) < 0.01) continue;
+
+                    const boxGeo = new THREE.BoxGeometry(step * 0.9, Math.abs(y), step * 0.9);
+                    const boxMat = new THREE.MeshPhongMaterial({
+                        color: 0x2563eb,
+                        transparent: true,
+                        opacity: 0.4
+                    });
+                    const box = new THREE.Mesh(boxGeo, boxMat);
+                    box.position.set(x, y/2, z);
+                    group.add(box);
+                }
+            }
+            volumeObject = group;
+            scene.add(volumeObject);
+        }
+
+// Create Volumetric Cloud for Triple Integral
+        function createVolumetricCloud(size, res) {
+    // Dispose any previous volumetric object to avoid leaks
+    if (volumeObject) disposeObject(volumeObject);
+
+    const step = (size * 2) / res;
+    const points = [];
+    const yStep = Math.max(0.08, step * 0.4);
+
+    // Sample (x,z) grid; for each (x,z) if density>0, fill vertical samples 0..density
+    for (let i = 0; i < res; i++) {
+        for (let k = 0; k < res; k++) {
+            const x = -size + i * step + step / 2;
+            const z = -size + k * step + step / 2;
+            const density = safeEval(x, z);
+            if (!(density > 0)) continue;
+
+            const maxY = Math.min(density, size);
+            for (let y = yStep / 2; y <= maxY; y += yStep) {
+                points.push({ x, y, z });
+            }
+        }
+    }
+
+    if (points.length === 0) return;
+
+    const pSizeEl = document.getElementById('particleSize');
+    const pOpEl = document.getElementById('particleOpacity');
+    const pSize = pSizeEl ? parseFloat(pSizeEl.value) : 0.08;
+    const pOp = pOpEl ? parseFloat(pOpEl.value) : 0.6;
+    const dotGeo = new THREE.SphereGeometry(pSize, 6, 6);
+    const dotMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: pOp });
+    const instancedMesh = new THREE.InstancedMesh(dotGeo, dotMat, points.length);
+    const dummy = new THREE.Object3D();
+
+    points.forEach((p, i) => {
+        dummy.position.set(p.x, p.y, p.z);
+        dummy.updateMatrix();
+        instancedMesh.setMatrixAt(i, dummy.matrix);
+    });
+    instancedMesh.instanceMatrix.needsUpdate = true;
+
+    volumeObject = instancedMesh;
+    scene.add(volumeObject);
+}
+
+        let sweepAngle = 0; // Global variable to track animation progress
+
+        function createShells(size, res, angle = Math.PI * 2) {
+    // Crucial: Clear the old volumeObject before redraw to prevent memory leaks
+    if (volumeObject) {
+        volumeObject.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        });
+        scene.remove(volumeObject);
+    }
+
+    const group = new THREE.Group();
+    const step = size / res;
+
+    for (let i = 1; i <= res; i++) {
+        const r = i * step;
+        const height = Math.abs(safeEval(r, 0));
+        
+        if (height < 0.01) continue;
+
+        // Args: radiusTop, radiusBottom, height, radialSegments, heightSegments, 
+        //       openEnded, thetaStart, thetaLength (the sweep angle)
+        const geo = new THREE.CylinderGeometry(r, r, height, 32, 1, true, 0, angle);
+        const mat = new THREE.MeshPhongMaterial({
+            color: new THREE.Color().setHSL(i / res, 0.8, 0.5),
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.6
+        });
+
+        const shell = new THREE.Mesh(geo, mat);
+        shell.position.set(0, height / 2, 0);
+        group.add(shell);
+    }
+
+    volumeObject = group;
+    scene.add(volumeObject);
+}
+
+        function updateCamera() {
+            phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
+            camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
+            camera.position.y = radius * Math.cos(phi);
+            camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function handleInput() {
+            let moved = false;
+            if (keys['KeyW']) { phi -= 0.03; moved = true; }
+            if (keys['KeyS']) { phi += 0.03; moved = true; }
+            if (keys['KeyA']) { theta -= 0.03; moved = true; }
+            if (keys['KeyD']) { theta += 0.03; moved = true; }
+            if (moved) updateCamera();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            handleInput();
+
+            // Animation Logic for Shell Method
+            if (currentMode === 'shell') {
+                const autoEl = document.getElementById('shellAuto');
+                const speedEl = document.getElementById('shellSpeed');
+                const speed = speedEl ? parseFloat(speedEl.value) : 0.05;
+                const auto = autoEl ? autoEl.checked : true;
+                if (auto) {
+                    if (sweepAngle < Math.PI * 2) {
+                        sweepAngle = Math.min(Math.PI * 2, sweepAngle + speed);
+                        createShells(10, 20, sweepAngle); // Redraw with new angle
+                    }
+                } else {
+                    // If auto is off, show full shells immediately
+                    createShells(10, 20, Math.PI * 2);
+                }
+            } else {
+                sweepAngle = 0; // Reset for next time mode is toggled
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
