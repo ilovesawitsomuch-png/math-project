@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Calculus Lab</title>
+    <title>3D Calculus Lab with Console</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         /* ==================== GLOBAL STYLES ==================== */
@@ -77,19 +77,120 @@
 
         #minimize-btn-right {
             position: absolute;
-            left: -40px;
+            left: -40px; /* place the button outside the panel on its left edge */
             top: 0;
             width: 30px;
             height: 30px;
             background: rgba(15, 15, 15, 0.9);
             border: 1px solid #444;
-            border-radius: 6px 0 0 6px;
+            border-radius: 0 6px 6px 0; /* rounded on the right side so it visually attaches to panel */
             color: white;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            z-index: 110; /* ensure it's above nearby UI */
+        }
+
+        /* Hamburger toggle for the right panel */
+        #ui-right-hamburger {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            background: rgba(20,20,20,0.95);
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 120;
+            font-size: 18px;
+        }
+
+        /* ==================== BOTTOM CONSOLE PANEL ==================== */
+        #console-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            color: white;
+            background: rgba(20, 20, 20, 0.98);
+            border-top: 1px solid #444;
+            z-index: 90;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            max-height: 40vh;
+        }
+
+        #console-panel.minimized {
+            transform: translateY(calc(100% - 40px));
+        }
+
+        .console-header {
+            padding: 8px 15px;
+            background: rgba(30, 30, 30, 0.95);
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .console-header h3 {
+            margin: 0;
+            color: #ffaa44;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        #minimize-btn-console {
+            background: rgba(15, 15, 15, 0.9);
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: white;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .console-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 15px;
+            gap: 15px;
+        }
+
+        .console-section {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            border-right: 1px solid #333;
+            padding-right: 15px;
+        }
+
+        .console-section:last-child {
+            border-right: none;
+            padding-right: 0;
+        }
+
+        .console-section h4 {
+            margin: 0 0 10px 0;
+            color: #ccc;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         /* ==================== FORM ELEMENTS ==================== */
@@ -106,7 +207,7 @@
             letter-spacing: 1px; 
         }
         
-        input {
+        input, select {
             width: 100%;
             background: #222;
             border: 1px solid #444;
@@ -181,16 +282,165 @@
 
         #minimap {
             position: absolute;
-            bottom: 20px;
+            bottom: 50px;
             right: 20px;
             border: 1px solid #444;
             border-radius: 8px;
             background: #000;
             z-index: 99;
+            cursor: grab;
+        }
+
+        /* ==================== CONSOLE SPECIFIC STYLES ==================== */
+        .eval-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .eval-controls input {
+            flex: 1;
+            text-align: center;
+            padding: 6px;
+            font-size: 0.85em;
+        }
+
+        .eval-controls button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
+
+        .results-container {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            height: 120px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.8em;
+            line-height: 1.4;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .calc-btn {
+            padding: 6px 4px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75em;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .calc-btn:hover {
+            background: #444;
+            border-color: #666;
+        }
+
+        .calc-btn:active {
+            background: #2563eb;
+            border-color: #3b82f6;
+        }
+
+        .console-entry {
+            margin-bottom: 4px;
+            padding: 4px 6px;
+            border-left: 2px solid #2563eb;
+            background: rgba(255,255,255,0.05);
+            border-radius: 0 4px 4px 0;
+            font-size: 0.85em;
+        }
+
+        .console-entry:last-child {
+            margin-bottom: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 0.8em;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+
+        .stat-label {
+            color: #aaa;
+            font-size: 0.75em;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            color: #4ade80;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        /* ==================== RESPONSIVE ADJUSTMENTS ==================== */
+        @media (max-width: 1200px) {
+            .console-content {
+                flex-wrap: wrap;
+                max-height: 300px;
+                overflow-y: auto;
+            }
+            
+            .console-section {
+                flex: 1 1 45%;
+                min-width: 200px;
+                margin-bottom: 10px;
+                border-right: none;
+                border-bottom: 1px solid #333;
+                padding-right: 0;
+                padding-bottom: 10px;
+            }
+            
+            .console-section:last-child {
+                border-bottom: none;
+            }
+        }
+
+        /* ==================== SCROLLBAR STYLING ==================== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
     </style>
 </head>
 <body>
+    <button id="ui-right-hamburger" title="Toggle Function Panel">☰</button>
 
     <div id="ui">
         <button id="minimize-btn" title="Toggle UI">M</button>
@@ -236,6 +486,10 @@
                     <input id="cameraLockSide" type="checkbox" style="width:16px; height:16px; flex-shrink:0;">
                     <label for="cameraLockSide" style="font-size:0.85em; color:#9ca3af; margin:0;">Camera Lock Side</label>
                 </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input id="cameraMouseEnable" type="checkbox" checked style="width:16px; height:16px; flex-shrink:0;">
+                    <label for="cameraMouseEnable" style="font-size:0.85em; color:#9ca3af; margin:0;">Enable Mouse Camera</label>
+                </div>
             </div>
             </div>
         </div>
@@ -250,6 +504,16 @@
     <div id="ui-right">
         <button id="minimize-btn-right" title="Toggle UI">M</button>
         <h3 style="margin: 0 0 15px 0; color: #2563eb;">Function & Integral</h3>
+        <div class="input-group" style="margin-bottom:10px;">
+            <label>Panel Setting</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <select id="uiRightDefault" style="width:160px; background:#222; color:#4ade80; border:1px solid #444; padding:6px; border-radius:4px;">
+                    <option value="open">Open by default</option>
+                    <option value="closed">Closed by default</option>
+                </select>
+                <button id="saveUiRightPref" class="mode-btn" style="padding:6px;">Save</button>
+            </div>
+        </div>
         
         <div class="input-group">
             <label>FUNCTION f(x, z)</label>
@@ -298,7 +562,90 @@
         </div>
     </div>
 
-    <div style="position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+    <!-- Bottom Console Panel -->
+    <div id="console-panel">
+        <div class="console-header">
+            <h3>Math Console</h3>
+            <button id="minimize-btn-console" title="Toggle Console">▼</button>
+        </div>
+        
+        <div class="console-content">
+            <!-- Left Section: Evaluation -->
+            <div class="console-section">
+                <h4>Quick Evaluation</h4>
+                <div class="eval-controls">
+                    <input type="text" id="console-x" placeholder="x" value="1.5">
+                    <input type="text" id="console-z" placeholder="z" value="1.0">
+                    <button id="eval-btn">Evaluate</button>
+                </div>
+                
+                <h4 style="margin-top: 15px;">Results</h4>
+                <div class="results-container" id="console-results">
+                    <div class="console-entry">
+                        <span style="color: #4ade80;">f(1.5, 1.0)</span>
+                        <span style="color: #ccc;">= </span>
+                        <span style="color: #ffaa44;">2.137</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Middle Section: Calculations -->
+            <div class="console-section">
+                <h4>Calculations</h4>
+                <div class="calc-grid">
+                    <button id="calc-derivative" class="calc-btn">∂f/∂x</button>
+                    <button id="calc-derivative-z" class="calc-btn">∂f/∂z</button>
+                    <button id="calc-gradient" class="calc-btn">∇f</button>
+                    <button id="calc-double-int" class="calc-btn">∬ f dxdz</button>
+                    <button id="calc-triple-int" class="calc-btn">∭ f dV</button>
+                    <button id="calc-volume" class="calc-btn">Volume</button>
+                </div>
+                
+                <h4 style="margin-top: 15px;">Actions</h4>
+                <div style="display: flex; gap: 8px;">
+                    <button id="clear-results" class="calc-btn" style="flex: 1;">Clear Results</button>
+                    <button id="export-data" class="calc-btn" style="flex: 1;">Export Data</button>
+                </div>
+            </div>
+            
+            <!-- Right Section: Statistics -->
+            <div class="console-section">
+                <h4>Statistics</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Domain X</div>
+                        <div class="stat-value" id="domain-x">[-10, 10]</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Domain Z</div>
+                        <div class="stat-value" id="domain-z">[-10, 10]</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Min Value</div>
+                        <div class="stat-value" id="min-value">-2.34</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Max Value</div>
+                        <div class="stat-value" id="max-value">3.45</div>
+                    </div>
+                    <div class="stat-item" style="grid-column: span 2;">
+                        <div class="stat-label">Average Value</div>
+                        <div class="stat-value" id="avg-value">0.78</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 15px;">Function Info</h4>
+                <div style="font-size: 0.8em; color: #aaa; line-height: 1.4;">
+                    <div>Current: <span id="current-func" style="color: #4ade80; font-family: monospace;">cos(x)*sin(z)*2</span></div>
+                    <div>Mode: <span id="current-mode" style="color: #60a5fa;">Surface</span></div>
+                    <div>Samples: <span id="sample-count" style="color: #f59e0b;">2500</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minimap (positioned above console) -->
+    <div style="position: absolute; bottom: 50px; right: 20px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
         <button id="minimapToggle" style="width: 30px; height: 24px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 0.7em; font-weight: bold; padding: 2px;">2D Map</button>
         <canvas id="minimap" width="200" height="200"></canvas>
     </div>
@@ -306,7 +653,7 @@
     <script>
         // ========================================
         // 3D CALCULUS LAB - INTERACTIVE VISUALIZATION
-        // Visualizes surfaces, partial derivatives, double/triple integrals, and shell method
+        // With Bottom Console Panel
         // ========================================
 
         // ==================== GLOBAL STATE ====================
@@ -314,16 +661,18 @@
         let theta = Math.PI / 4, phi = Math.PI / 3, radius = 25;
         const keys = {};
         let currentMode = 'normal';
-        let minimapMode = 'heatmap'; // 'heatmap' or 'curve'
+        let minimapMode = 'heatmap';
         let isMouseDown = false;
         let prevMouseX = 0, prevMouseY = 0;
-        let sweepAngle = 0; // Animation progress for shell method
+        let sweepAngle = 0;
         let statusTimer = null;
+        let evalHistory = [];
+        let consoleMinimized = false;
+        let mouseCameraEnabled = true; // toggles camera rotation via mouse drag
+        let isDraggingMinimap = false;
+        let minimapDragOffsetX = 0, minimapDragOffsetY = 0;
 
-        // ==================== INITIALIZATION ====================
-        /**
-         * Initialize Three.js scene, camera, renderer, and event listeners
-         */
+        // ==================== MAIN INITIALIZATION ====================
         function init() {
             // Setup scene, camera, and renderer
             scene = new THREE.Scene();
@@ -349,6 +698,9 @@
             // Wire up UI controls
             setupUIControls();
 
+            // Initialize console
+            initConsole();
+
             // Initial render
             updateGraph();
             updateCamera();
@@ -356,9 +708,6 @@
             animate();
         }
 
-        /**
-         * Setup all keyboard, mouse, and window event listeners
-         */
         function setupEventListeners() {
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('keydown', (e) => keys[e.code] = true);
@@ -369,10 +718,12 @@
             window.addEventListener('wheel', onWheel, { passive: false });
         }
 
-        /**
-         * Setup all UI control interactions (buttons, sliders, inputs, etc.)
-         */
         function setupUIControls() {
+            // Setup minimap dragging
+            setupMinimapDragging();
+            // Setup hamburger toggle for right panel and preference
+            setupHamburgerToggle();
+
             // Function input and preset sync
             const funcInput = document.getElementById('funcInput');
             const preset = document.getElementById('presetSelect');
@@ -420,11 +771,44 @@
             setupSlider('particleOpacity', 'particleOpacityVal', () => updateGraph(), true);
             setupSlider('shellSpeed', 'shellSpeedVal', () => {});
 
-            // Camera lock checkboxes
-            ['cameraLock2D', 'cameraLockFront', 'cameraLockSide'].forEach(id => {
+            // Camera lock checkboxes - make them mutually exclusive
+            const cameraCheckboxes = ['cameraLock2D', 'cameraLockFront', 'cameraLockSide'];
+            cameraCheckboxes.forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.addEventListener('change', () => updateCamera());
+                if (el) {
+                    el.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            cameraCheckboxes.forEach(otherId => {
+                                if (otherId !== id) {
+                                    const otherEl = document.getElementById(otherId);
+                                    if (otherEl) otherEl.checked = false;
+                                }
+                            });
+                        }
+                        updateCamera();
+                    });
+                }
             });
+
+            // Mouse camera enable/disable
+            const mouseCamEl = document.getElementById('cameraMouseEnable');
+            if (mouseCamEl) {
+                // initialize from localStorage
+                const saved = localStorage.getItem('cameraMouseEnabled');
+                if (saved !== null) {
+                    const val = saved === 'true';
+                    mouseCamEl.checked = val;
+                    mouseCameraEnabled = val;
+                } else {
+                    mouseCamEl.checked = mouseCameraEnabled;
+                }
+
+                mouseCamEl.addEventListener('change', (e) => {
+                    mouseCameraEnabled = !!e.target.checked;
+                    localStorage.setItem('cameraMouseEnabled', mouseCameraEnabled ? 'true' : 'false');
+                    showStatus('Mouse camera ' + (mouseCameraEnabled ? 'enabled' : 'disabled'), 1200);
+                });
+            }
 
             // Mode buttons
             document.getElementById('btnNormal').onclick = () => setMode('normal');
@@ -459,9 +843,465 @@
             }
         }
 
-        /**
-         * Helper: Setup a slider control with label updates
-         */
+        // ==================== MINIMAP DRAGGING ====================
+        function setupMinimapDragging() {
+            const minimapContainer = document.querySelector('#minimap')?.parentElement;
+            if (!minimapContainer) return;
+
+            minimapContainer.addEventListener('mousedown', (e) => {
+                // Only start dragging if click is on the toggle button or minimap area
+                if (e.target.id === 'minimapToggle' || e.target.id === 'minimap') {
+                    isDraggingMinimap = true;
+                    minimapDragOffsetX = e.clientX - minimapContainer.offsetLeft;
+                    minimapDragOffsetY = e.clientY - minimapContainer.offsetTop;
+                    minimapContainer.style.cursor = 'grabbing';
+                    e.preventDefault();
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDraggingMinimap) return;
+                
+                const minimapContainer = document.querySelector('#minimap')?.parentElement;
+                if (!minimapContainer) return;
+
+                const newX = e.clientX - minimapDragOffsetX;
+                const newY = e.clientY - minimapDragOffsetY;
+
+                // Constrain to window bounds
+                const constrainedX = Math.max(0, Math.min(newX, window.innerWidth - minimapContainer.offsetWidth));
+                const constrainedY = Math.max(0, Math.min(newY, window.innerHeight - minimapContainer.offsetHeight));
+
+                minimapContainer.style.position = 'fixed';
+                minimapContainer.style.bottom = 'auto';
+                minimapContainer.style.right = 'auto';
+                minimapContainer.style.left = constrainedX + 'px';
+                minimapContainer.style.top = constrainedY + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDraggingMinimap) {
+                    isDraggingMinimap = false;
+                    const minimapContainer = document.querySelector('#minimap')?.parentElement;
+                    if (minimapContainer) {
+                        minimapContainer.style.cursor = 'grab';
+                    }
+                }
+            });
+
+            // Add grab cursor styling
+            minimapContainer.style.cursor = 'grab';
+        }
+
+        // ==================== HAMBURGER TOGGLE & PREFERENCE ====================
+        function setupHamburgerToggle() {
+            const btn = document.getElementById('ui-right-hamburger');
+            const panel = document.getElementById('ui-right');
+            const minBtnRight = document.getElementById('minimize-btn-right');
+            if (!btn || !panel) return;
+
+            btn.addEventListener('click', () => {
+                panel.classList.toggle('minimized');
+                if (minBtnRight) minBtnRight.textContent = panel.classList.contains('minimized') ? "➔" : "M";
+            });
+
+            // initialize from saved preference
+            const pref = localStorage.getItem('uiRightDefault') || 'open';
+            const sel = document.getElementById('uiRightDefault');
+            if (sel) sel.value = pref;
+            if (pref === 'closed') {
+                panel.classList.add('minimized');
+                if (minBtnRight) minBtnRight.textContent = "➔";
+            } else {
+                panel.classList.remove('minimized');
+                if (minBtnRight) minBtnRight.textContent = "M";
+            }
+
+            // save preference
+            const saveBtn = document.getElementById('saveUiRightPref');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => {
+                    const v = document.getElementById('uiRightDefault')?.value || 'open';
+                    localStorage.setItem('uiRightDefault', v);
+                    showStatus('Right panel preference saved', 1500);
+                });
+            }
+        }
+
+        // ==================== CONSOLE FUNCTIONALITY ====================
+        function initConsole() {
+            // Toggle console with header click
+            document.querySelector('.console-header').addEventListener('click', toggleConsole);
+            
+            // Wire up console buttons
+            setupConsoleControls();
+            
+            // Initial update of statistics
+            updateStatistics();
+        }
+
+        function toggleConsole() {
+            const consolePanel = document.getElementById('console-panel');
+            const minBtn = document.getElementById('minimize-btn-console');
+            
+            consolePanel.classList.toggle('minimized');
+            consoleMinimized = consolePanel.classList.contains('minimized');
+            minBtn.textContent = consoleMinimized ? "▲" : "▼";
+        }
+
+        function setupConsoleControls() {
+            // Evaluate button
+            const evalBtn = document.getElementById('eval-btn');
+            if (evalBtn) {
+                evalBtn.onclick = evaluatePoint;
+            }
+            
+            // Enter key evaluation
+            ['console-x', 'console-z'].forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') evaluatePoint();
+                    });
+                }
+            });
+            
+            // Clear results button
+            const clearBtn = document.getElementById('clear-results');
+            if (clearBtn) {
+                clearBtn.onclick = () => {
+                    document.getElementById('console-results').innerHTML = '';
+                    addConsoleResult('Cleared all results', '', '#888');
+                };
+            }
+            
+            // Export data button
+            const exportBtn = document.getElementById('export-data');
+            if (exportBtn) {
+                exportBtn.onclick = exportConsoleData;
+            }
+            
+            // Calculation buttons
+            document.getElementById('calc-derivative')?.addEventListener('click', () => calculateDerivative('x'));
+            document.getElementById('calc-derivative-z')?.addEventListener('click', () => calculateDerivative('z'));
+            document.getElementById('calc-gradient')?.addEventListener('click', calculateGradient);
+            document.getElementById('calc-double-int')?.addEventListener('click', calculateDoubleIntegral);
+            document.getElementById('calc-triple-int')?.addEventListener('click', calculateTripleIntegral);
+            document.getElementById('calc-volume')?.addEventListener('click', calculateVolume);
+        }
+
+        function evaluatePoint() {
+            try {
+                const xInput = document.getElementById('console-x');
+                const zInput = document.getElementById('console-z');
+                
+                if (!xInput || !zInput) return;
+                
+                const x = parseFloat(xInput.value);
+                const z = parseFloat(zInput.value);
+                
+                if (isNaN(x) || isNaN(z)) {
+                    showStatus('Please enter valid numbers for x and z', 2000);
+                    return;
+                }
+                
+                const y = safeEval(x, z);
+                const resultsDiv = document.getElementById('console-results');
+                
+                // Add result entry
+                const entry = document.createElement('div');
+                entry.className = 'console-entry';
+                entry.innerHTML = `
+                    <span style="color: #4ade80;">f(${x.toFixed(3)}, ${z.toFixed(3)})</span>
+                    <span style="color: #ccc;"> = </span>
+                    <span style="color: #ffaa44;">${y.toFixed(6)}</span>
+                    <span style="color: #888; font-size: 0.7em; float: right;">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                `;
+                
+                resultsDiv.prepend(entry);
+                
+                // Limit number of entries
+                const entries = resultsDiv.getElementsByClassName('console-entry');
+                if (entries.length > 20) {
+                    resultsDiv.removeChild(entries[entries.length - 1]);
+                }
+                
+                // Scroll to top
+                resultsDiv.scrollTop = 0;
+                
+                showStatus(`Evaluated: f(${x.toFixed(2)}, ${z.toFixed(2)}) = ${y.toFixed(4)}`, 1500);
+                
+            } catch (e) {
+                console.error('Evaluation error:', e);
+                showStatus('Error evaluating point: ' + e.message, 3000);
+            }
+        }
+
+        function calculateDerivative(variable) {
+            const xInput = document.getElementById('console-x');
+            const zInput = document.getElementById('console-z');
+            
+            if (!xInput || !zInput) return;
+            
+            const x = parseFloat(xInput.value);
+            const z = parseFloat(zInput.value);
+            
+            if (isNaN(x) || isNaN(z)) {
+                showStatus('Please enter valid numbers first', 2000);
+                return;
+            }
+            
+            const h = 0.0001;
+            let derivative;
+            if (variable === 'x') {
+                derivative = (safeEval(x + h, z) - safeEval(x - h, z)) / (2 * h);
+            } else {
+                derivative = (safeEval(x, z + h) - safeEval(x, z - h)) / (2 * h);
+            }
+            
+            addConsoleResult(
+                `∂f/∂${variable} at (${x.toFixed(2)}, ${z.toFixed(2)})`,
+                derivative.toFixed(6),
+                '#60a5fa'
+            );
+        }
+
+        function calculateGradient() {
+            const xInput = document.getElementById('console-x');
+            const zInput = document.getElementById('console-z');
+            
+            if (!xInput || !zInput) return;
+            
+            const x = parseFloat(xInput.value);
+            const z = parseFloat(zInput.value);
+            
+            if (isNaN(x) || isNaN(z)) {
+                showStatus('Please enter valid numbers first', 2000);
+                return;
+            }
+            
+            const h = 0.0001;
+            const df_dx = (safeEval(x + h, z) - safeEval(x - h, z)) / (2 * h);
+            const df_dz = (safeEval(x, z + h) - safeEval(x, z - h)) / (2 * h);
+            
+            const magnitude = Math.sqrt(df_dx * df_dx + df_dz * df_dz);
+            
+            addConsoleResult(
+                `∇f at (${x.toFixed(2)}, ${z.toFixed(2)})`,
+                `<${df_dx.toFixed(4)}, ${df_dz.toFixed(4)}> (mag: ${magnitude.toFixed(4)})`,
+                '#8b5cf6'
+            );
+        }
+
+        function calculateDoubleIntegral() {
+            const size = 10;
+            const resolution = 50;
+            const step = (size * 2) / resolution;
+            
+            let total = 0;
+            let sampleCount = 0;
+            
+            for (let i = 0; i < resolution; i++) {
+                for (let j = 0; j < resolution; j++) {
+                    const x = -size + i * step + step / 2;
+                    const z = -size + j * step + step / 2;
+                    const y = safeEval(x, z);
+                    
+                    total += y * (step * step);
+                    sampleCount++;
+                }
+            }
+            
+            const result = total;
+            
+            addConsoleResult(
+                'Double Integral ∬ f(x,z) dxdz',
+                result.toFixed(6),
+                '#10b981'
+            );
+            
+            showStatus(`Approximated double integral: ${result.toFixed(4)} (${sampleCount} samples)`, 2500);
+        }
+
+        function calculateTripleIntegral() {
+            const size = 10;
+            const xyResolution = 40;
+            const yResolution = 20;
+            
+            const stepXZ = (size * 2) / xyResolution;
+            let totalVolume = 0;
+            
+            for (let i = 0; i < xyResolution; i++) {
+                for (let j = 0; j < xyResolution; j++) {
+                    const x = -size + i * stepXZ + stepXZ / 2;
+                    const z = -size + j * stepXZ + stepXZ / 2;
+                    const height = safeEval(x, z);
+                    
+                    if (height > 0) {
+                        const stepY = height / yResolution;
+                        for (let k = 0; k < yResolution; k++) {
+                            const y = (k + 0.5) * stepY;
+                            totalVolume += stepXZ * stepXZ * stepY;
+                        }
+                    }
+                }
+            }
+            
+            addConsoleResult(
+                'Triple Integral ∭ f(x,z) dV',
+                totalVolume.toFixed(6),
+                '#f59e0b'
+            );
+        }
+
+        function calculateVolume() {
+            const size = 10;
+            const resolution = 100;
+            
+            // Method 1: Riemann sum
+            let riemannVolume = 0;
+            const step = (size * 2) / resolution;
+            
+            for (let i = 0; i < resolution; i++) {
+                for (let j = 0; j < resolution; j++) {
+                    const x = -size + i * step + step / 2;
+                    const z = -size + j * step + step / 2;
+                    const height = Math.abs(safeEval(x, z));
+                    riemannVolume += height * step * step;
+                }
+            }
+            
+            // Method 2: Shell method approximation
+            let shellVolume = 0;
+            const shellStep = size / resolution;
+            
+            for (let r = 0; r < resolution; r++) {
+                const radius = (r + 0.5) * shellStep;
+                const circumference = 2 * Math.PI * radius;
+                
+                let totalHeight = 0;
+                for (let theta = 0; theta < 8; theta++) {
+                    const angle = (theta / 8) * Math.PI * 2;
+                    const x = radius * Math.cos(angle);
+                    const z = radius * Math.sin(angle);
+                    totalHeight += Math.abs(safeEval(x, z));
+                }
+                const avgHeight = totalHeight / 8;
+                
+                shellVolume += circumference * avgHeight * shellStep;
+            }
+            
+            addConsoleResult(
+                'Volume (Riemann)',
+                riemannVolume.toFixed(6),
+                '#ef4444'
+            );
+            
+            addConsoleResult(
+                'Volume (Shell Method)',
+                shellVolume.toFixed(6),
+                '#ec4899'
+            );
+            
+            const diff = Math.abs(riemannVolume - shellVolume);
+            const percentDiff = (diff / ((riemannVolume + shellVolume) / 2)) * 100;
+            
+            addConsoleResult(
+                'Difference',
+                `${diff.toFixed(6)} (${percentDiff.toFixed(2)}%)`,
+                '#6b7280'
+            );
+        }
+
+        function exportConsoleData() {
+            const data = {
+                function: document.getElementById('funcInput').value,
+                evaluations: evalHistory,
+                timestamp: new Date().toISOString(),
+                mode: currentMode
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `calculus-console-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            
+            showStatus('Data exported successfully', 2000);
+            addConsoleResult('Exported console data', 'Download started', '#10b981');
+        }
+
+        function updateStatistics() {
+            const size = 10;
+            const resolution = 50;
+            const step = (size * 2) / resolution;
+            
+            let minY = Infinity;
+            let maxY = -Infinity;
+            let totalY = 0;
+            let sampleCount = 0;
+            
+            for (let i = 0; i < resolution; i++) {
+                for (let j = 0; j < resolution; j++) {
+                    const x = -size + i * step + step / 2;
+                    const z = -size + j * step + step / 2;
+                    const y = safeEval(x, z);
+                    
+                    if (isFinite(y)) {
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                        totalY += y;
+                        sampleCount++;
+                    }
+                }
+            }
+            
+            const avgY = sampleCount > 0 ? totalY / sampleCount : 0;
+            
+            // Update statistics display
+            document.getElementById('min-value').textContent = minY.toFixed(2);
+            document.getElementById('max-value').textContent = maxY.toFixed(2);
+            document.getElementById('avg-value').textContent = avgY.toFixed(4);
+            document.getElementById('sample-count').textContent = sampleCount;
+            
+            // Update current function display
+            const func = document.getElementById('funcInput').value;
+            const shortFunc = func.length > 30 ? func.substring(0, 27) + '...' : func;
+            document.getElementById('current-func').textContent = shortFunc;
+            
+            // Update mode display
+            const modeNames = {
+                'normal': 'Surface',
+                'deriv': 'Partial Derivative',
+                'double': 'Double Integral',
+                'triple': 'Triple Integral',
+                'shell': 'Shell Method'
+            };
+            document.getElementById('current-mode').textContent = modeNames[currentMode] || currentMode;
+        }
+
+        function addConsoleResult(label, value, color = '#ffaa44') {
+            const resultsDiv = document.getElementById('console-results');
+            const entry = document.createElement('div');
+            entry.className = 'console-entry';
+            entry.innerHTML = `
+                <span style="color: #ccc;">${label}: </span>
+                <span style="color: ${color};">${value}</span>
+                <span style="color: #888; font-size: 0.7em; float: right;">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            `;
+            
+            resultsDiv.prepend(entry);
+            
+            const entries = resultsDiv.getElementsByClassName('console-entry');
+            if (entries.length > 20) {
+                resultsDiv.removeChild(entries[entries.length - 1]);
+            }
+            
+            resultsDiv.scrollTop = 0;
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
         function setupSlider(sliderId, labelId, callback, isFloat = false) {
             const slider = document.getElementById(sliderId);
             const label = document.getElementById(labelId);
@@ -477,9 +1317,6 @@
             });
         }
 
-        /**
-         * Sync preset dropdown with current function input value
-         */
         function syncPresetSelection() {
             const funcInput = document.getElementById('funcInput');
             const preset = document.getElementById('presetSelect');
@@ -497,8 +1334,68 @@
             if (!matched) preset.selectedIndex = 0;
         }
 
+        function safeEval(x, z) {
+            try {
+                const expr = document.getElementById('funcInput').value;
+                const fn = new Function('x', 'z', 'Math', `return (${expr});`);
+                const result = fn(x, z, Math);
+                
+                // Store in history
+                evalHistory.push({x, z, result, timestamp: Date.now()});
+                if (evalHistory.length > 100) {
+                    evalHistory.shift();
+                }
+                
+                return (typeof result === 'number' && isFinite(result)) ? result : 0;
+            } catch (e) {
+                console.warn('safeEval error:', e);
+                showStatus('Math error in function', 2000);
+                return 0;
+            }
+        }
+
+        function disposeObject(obj) {
+            if (!obj) return;
+            
+            if (obj.children && obj.children.length > 0) {
+                obj.children.forEach(child => {
+                    disposeObject(child);
+                });
+            }
+            
+            if (obj.geometry) {
+                obj.geometry.dispose();
+            }
+            
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach(material => {
+                        if (material.map) material.map.dispose();
+                        material.dispose();
+                    });
+                } else {
+                    if (obj.material.map) obj.material.map.dispose();
+                    obj.material.dispose();
+                }
+            }
+            
+            if (obj.parent) {
+                obj.parent.remove(obj);
+            }
+        }
+
+        function showStatus(msg, ms = 1800) {
+            let el = document.getElementById('status');
+            if (!el) return;
+            el.textContent = msg;
+            el.style.opacity = '1';
+            if (statusTimer) clearTimeout(statusTimer);
+            statusTimer = setTimeout(() => { el.style.opacity = '0'; }, ms);
+        }
+
         // ==================== USER INPUT HANDLING ====================
         function onMouseDown(e) { 
+            if (!mouseCameraEnabled) return;
             if (e.target.tagName === 'CANVAS') { 
                 isMouseDown = true; 
                 prevMouseX = e.clientX; 
@@ -507,7 +1404,7 @@
         }
 
         function onMouseMove(e) {
-            if (!isMouseDown) return;
+            if (!isMouseDown || !mouseCameraEnabled) return;
             theta -= (e.clientX - prevMouseX) * 0.005;
             phi -= (e.clientY - prevMouseY) * 0.005;
             prevMouseX = e.clientX; 
@@ -529,10 +1426,18 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Adjust minimap position based on console state
+            const minimap = document.getElementById('minimap');
+            const minimapContainer = minimap.parentElement;
+            if (consoleMinimized) {
+                minimapContainer.style.bottom = '80px';
+            } else {
+                minimapContainer.style.bottom = '50px';
+            }
         }
 
         function handleInput() {
-            // Disable keyboard input when any camera lock is active
             const cameraLock2D = document.getElementById('cameraLock2D');
             const cameraLockFront = document.getElementById('cameraLockFront');
             const cameraLockSide = document.getElementById('cameraLockSide');
@@ -548,62 +1453,10 @@
             if (moved) updateCamera();
         }
 
-        // ==================== UTILITY FUNCTIONS ====================
-        /**
-         * Safely evaluate mathematical expression
-         * @param {number} x - X coordinate
-         * @param {number} z - Z coordinate
-         * @returns {number} Function value at (x, z)
-         */
-        function safeEval(x, z) {
-            try {
-                const expr = document.getElementById('funcInput').value;
-                const fn = new Function('x', 'z', 'Math', `return (${expr});`);
-                const v = fn(x, z, Math);
-                return (typeof v === 'number' && isFinite(v)) ? v : 0;
-            } catch (e) {
-                console.warn('safeEval error:', e);
-                return 0;
-            }
-        }
-
-        /**
-         * Properly dispose Three.js geometries and materials
-         */
-        function disposeObject(obj) {
-            if (!obj) return;
-            obj.traverse(node => {
-                if (node.geometry) node.geometry.dispose();
-                if (node.material) {
-                    if (Array.isArray(node.material)) {
-                        node.material.forEach(m => m.dispose());
-                    } else {
-                        node.material.dispose();
-                    }
-                }
-            });
-            scene.remove(obj);
-        }
-
-        /**
-         * Show temporary status message to user
-         */
-        function showStatus(msg, ms = 1800) {
-            let el = document.getElementById('status');
-            if (!el) return;
-            el.textContent = msg;
-            el.style.opacity = '1';
-            if (statusTimer) clearTimeout(statusTimer);
-            statusTimer = setTimeout(() => { el.style.opacity = '0'; }, ms);
-        }
-
         // ==================== MODE & GRAPH MANAGEMENT ====================
-        /**
-         * Set visualization mode and update display
-         */
         function setMode(mode) {
             currentMode = mode;
-            sweepAngle = 0; // Reset animation
+            sweepAngle = 0;
             document.querySelectorAll('button.mode-btn').forEach(b => b.classList.remove('active'));
             
             const btnId = 'btn' + mode.charAt(0).toUpperCase() + mode.slice(1);
@@ -613,16 +1466,26 @@
             updateGraph();
         }
 
-        /**
-         * Update graph visualization based on current mode
-         */
         function updateGraph() {
-            // Clean up previous objects
-            disposeObject(graphObject);
-    graphObject = null;
-            disposeObject(volumeObject);
-    volumeObject = null;
-
+            // Clean up previous objects properly
+            if (graphObject) {
+                try {
+                    disposeObject(graphObject);
+                } catch (e) {
+                    console.warn('Error disposing graphObject:', e);
+                }
+                graphObject = null;
+            }
+            
+            if (volumeObject) {
+                try {
+                    disposeObject(volumeObject);
+                } catch (e) {
+                    console.warn('Error disposing volumeObject:', e);
+                }
+                volumeObject = null;
+            }
+            
             const size = 10, res = 30;
             const logicText = document.getElementById('logicText');
             const formula = document.getElementById('formula');
@@ -659,27 +1522,23 @@
             }
 
             drawMinimap();
+            updateStatistics();
         }
 
-        // ==================== GRAPH CREATION ====================
-        /**
-         * Create and render surface mesh
-         */
+        // ==================== GRAPH CREATION FUNCTIONS ====================
         function createSurface(size, res, type = 'normal') {
             const geometry = new THREE.PlaneGeometry(size*2, size*2, res, res);
-            geometry.rotateX(-Math.PI / 2); // Lay flat on XZ plane
+            geometry.rotateX(-Math.PI / 2);
             
             const pos = geometry.attributes.position;
-            const h = 0.01; // Step size for derivative approximation
+            const h = 0.01;
 
-            // Update vertex positions based on function values
             for (let i = 0; i < pos.count; i++) {
                 let x = pos.getX(i);
                 let z = pos.getZ(i);
                 let y = 0;
 
                 if (type === 'deriv') {
-                    // Centered difference formula for derivative
                     y = (safeEval(x + h, z) - safeEval(x - h, z)) / (2 * h);
                 } else {
                     y = safeEval(x, z);
@@ -700,14 +1559,10 @@
             scene.add(graphObject);
         }
         
-        /**
-         * Create volume representation for double integral visualization
-         */
         function createVolume(size, res) {
             const group = new THREE.Group();
             const step = (size * 2) / res;
             
-            // Draw rectangular slabs to show volume under surface
             for (let i = 0; i < res; i++) {
                 for (let j = 0; j < res; j++) {
                     const x = -size + i * step + step/2;
@@ -731,18 +1586,11 @@
             scene.add(volumeObject);
         }
 
-        /**
-         * Create volumetric cloud particles for triple integral visualization
-         */
         function createVolumetricCloud(size, res) {
-            if (volumeObject) disposeObject(volumeObject);
-    volumeObject = null;
-
             const step = (size * 2) / res;
             const points = [];
             const samplesPerUnit = 8;
 
-            // Sample (x,z) grid and adaptively fill vertical samples
             for (let i = 0; i < res; i++) {
                 for (let k = 0; k < res; k++) {
                     const x = -size + i * step + step / 2;
@@ -753,7 +1601,6 @@
                     const maxY = Math.min(density, size);
                     const numSamples = Math.max(2, Math.floor(density * samplesPerUnit));
                     for (let j = 0; j < numSamples; j++) {
-                        // Midpoint rule sampling
                         const y = (j + 0.5) * (maxY / numSamples);
                         points.push({ x, y, z });
                     }
@@ -762,7 +1609,6 @@
 
             if (points.length === 0) return;
 
-            // Use InstancedMesh for efficient rendering of many particles
             const pSizeEl = document.getElementById('particleSize');
             const pOpEl = document.getElementById('particleOpacity');
             const pSize = pSizeEl ? parseFloat(pSizeEl.value) : 0.08;
@@ -788,21 +1634,14 @@
             scene.add(volumeObject);
         }
 
-        /**
-         * Create shell method (cylindrical shells) visualization
-         */
         function createShells(size, res, angle = Math.PI * 2) {
-            if (volumeObject) disposeObject(volumeObject);
-    volumeObject = null;
-
             const group = new THREE.Group();
             const step = size / res;
-            const circumferenceSamples = 8; // Sample points around shell
+            const circumferenceSamples = 8;
 
             for (let i = 1; i <= res; i++) {
                 const r = i * step;
                 
-                // Average height around circumference
                 let heightSum = 0;
                 for (let j = 0; j < circumferenceSamples; j++) {
                     const shellTheta = (j / circumferenceSamples) * Math.PI * 2;
@@ -814,7 +1653,6 @@
                 
                 if (height < 0.01) continue;
 
-                // CylinderGeometry: radius, height, segments, openEnded, thetaStart, thetaLength
                 const geo = new THREE.CylinderGeometry(r, r, height, 32, 1, true, 0, angle);
                 const mat = new THREE.MeshPhongMaterial({
                     color: new THREE.Color().setHSL(i / res, 0.8, 0.5),
@@ -833,28 +1671,21 @@
         }
 
         // ==================== CAMERA CONTROL ====================
-        /**
-         * Update camera position based on controls or locked view
-         */
         function updateCamera() {
             const cameraLock2D = document.getElementById('cameraLock2D');
             const cameraLockFront = document.getElementById('cameraLockFront');
             const cameraLockSide = document.getElementById('cameraLockSide');
             
             if (cameraLock2D?.checked) {
-                // Top-down orthographic-like view
                 camera.position.set(0, 35, 0);
                 camera.lookAt(0, 0, 0);
             } else if (cameraLockFront?.checked) {
-                // Front view (XY plane)
                 camera.position.set(0, 0, 35);
                 camera.lookAt(0, 0, 0);
             } else if (cameraLockSide?.checked) {
-                // Side view (YZ plane)
                 camera.position.set(35, 0, 0);
                 camera.lookAt(0, 0, 0);
             } else {
-                // Free orbit mode
                 phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
                 camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
                 camera.position.y = radius * Math.cos(phi);
@@ -864,9 +1695,6 @@
         }
 
         // ==================== MINIMAP RENDERING ====================
-        /**
-         * Draw appropriate minimap (heatmap or curve)
-         */
         function drawMinimap() {
             if (minimapMode === 'heatmap') {
                 drawMinimapHeatmap();
@@ -875,9 +1703,6 @@
             }
         }
 
-        /**
-         * Draw 2D heatmap of function values in XZ plane
-         */
         function drawMinimapHeatmap() {
             const canvas = document.getElementById('minimap');
             if (!canvas) return;
@@ -886,7 +1711,6 @@
             const size = 10, res = 40;
             const step = (size * 2) / res;
 
-            // Clear and find value range
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, w, h);
 
@@ -908,13 +1732,11 @@
                 maxVal = 5;
             }
 
-            // Add 5% padding
             const range = maxVal - minVal;
             const padding = range * 0.05;
             minVal -= padding;
             maxVal += padding;
 
-            // Draw heatmap cells with color gradient
             for (let i = 0; i < res; i++) {
                 for (let j = 0; j < res; j++) {
                     const x = -size + i * step + step / 2;
@@ -924,7 +1746,6 @@
                     let normalized = (val - minVal) / (maxVal - minVal);
                     normalized = Math.max(0, Math.min(1, normalized));
                     
-                    // Color: blue → cyan → green → yellow → red
                     let color = getHeatmapColor(normalized);
                     
                     ctx.fillStyle = color;
@@ -934,15 +1755,11 @@
                 }
             }
 
-            // Draw grid and axes
             drawMinimapGrid(ctx, w, h, res, 5);
             drawMinimapAxes(ctx, w, h);
             drawMinimapLegend(ctx, w, h, minVal, maxVal);
         }
 
-        /**
-         * Draw 1D curve along X axis at Z=0
-         */
         function drawMinimapCurve() {
             const canvas = document.getElementById('minimap');
             if (!canvas) return;
@@ -951,14 +1768,13 @@
             const size = 10, res = 80;
             const step = (size * 2) / res;
 
-            // Clear and find value range
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, w, h);
 
             let minVal = Infinity, maxVal = -Infinity;
             for (let i = 0; i <= res; i++) {
                 const x = -size + i * step;
-                const y = safeEval(x, 0); // z=0 slice
+                const y = safeEval(x, 0);
                 if (isFinite(y)) {
                     minVal = Math.min(minVal, y);
                     maxVal = Math.max(maxVal, y);
@@ -970,13 +1786,11 @@
                 maxVal = 5;
             }
 
-            // Add 10% padding
             const range = maxVal - minVal;
             const padding = range * 0.1;
             minVal -= padding;
             maxVal += padding;
 
-            // Draw grid
             ctx.strokeStyle = '#222';
             ctx.lineWidth = 0.5;
             for (let i = 0; i <= res; i += 10) {
@@ -994,12 +1808,10 @@
                 ctx.stroke();
             }
 
-            // Setup scaling
             const centerX = 0, centerY = h / 2;
             const scaleX = w / (size * 2);
             const scaleY = h / (maxVal - minVal);
 
-            // Draw curve
             ctx.strokeStyle = '#4ade80';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
@@ -1021,7 +1833,6 @@
             }
             ctx.stroke();
 
-            // Draw axes
             const axisY = centerY + ((maxVal - minVal) / 2) * scaleY;
             ctx.strokeStyle = '#555';
             ctx.lineWidth = 1;
@@ -1034,7 +1845,6 @@
             ctx.lineTo(centerX + size * scaleX, h);
             ctx.stroke();
 
-            // Draw labels
             ctx.fillStyle = '#888';
             ctx.font = '10px monospace';
             ctx.textAlign = 'right';
@@ -1042,7 +1852,6 @@
             ctx.textAlign = 'left';
             ctx.fillText('Y', centerX + size * scaleX + 3, 12);
 
-            // Draw value range labels
             ctx.fillStyle = '#666';
             ctx.font = '8px monospace';
             ctx.textAlign = 'right';
@@ -1050,32 +1859,11 @@
             ctx.fillText(minVal.toFixed(1), 5, h - 2);
         }
 
-        /**
-         * Helper: Get heatmap color for normalized value [0,1]
-         */
         function getHeatmapColor(normalized) {
-            if (normalized < 0.25) {
-                const t = normalized / 0.25;
-                const r = 0, g = Math.floor(t * 255), b = 255;
-                return `rgb(${r},${g},${b})`;
-            } else if (normalized < 0.5) {
-                const t = (normalized - 0.25) / 0.25;
-                const r = 0, g = 255, b = Math.floor((1 - t) * 255);
-                return `rgb(${r},${g},${b})`;
-            } else if (normalized < 0.75) {
-                const t = (normalized - 0.5) / 0.25;
-                const r = Math.floor(t * 255), g = 255, b = 0;
-                return `rgb(${r},${g},${b})`;
-            } else {
-                const t = (normalized - 0.75) / 0.25;
-                const r = 255, g = Math.floor((1 - t) * 255), b = 0;
-                return `rgb(${r},${g},${b})`;
-            }
+            const hue = 240 * (1 - normalized);
+            return `hsl(${hue}, 100%, 50%)`;
         }
 
-        /**
-         * Helper: Draw grid lines on minimap
-         */
         function drawMinimapGrid(ctx, w, h, res, interval) {
             ctx.strokeStyle = 'rgba(255,255,255,0.1)';
             ctx.lineWidth = 0.5;
@@ -1093,9 +1881,6 @@
             }
         }
 
-        /**
-         * Helper: Draw axes on minimap
-         */
         function drawMinimapAxes(ctx, w, h) {
             const centerX = w / 2, centerY = h / 2;
             ctx.strokeStyle = '#666';
@@ -1117,9 +1902,6 @@
             ctx.fillText('Z', centerX - 8, 14);
         }
 
-        /**
-         * Helper: Draw color scale legend on minimap
-         */
         function drawMinimapLegend(ctx, w, h, minVal, maxVal) {
             const legWidth = 12, legHeight = 60;
             const legX = w - legWidth - 4, legY = h - legHeight - 4;
@@ -1142,7 +1924,6 @@
             requestAnimationFrame(animate);
             handleInput();
 
-            // Shell method animation
             if (currentMode === 'shell') {
                 const autoEl = document.getElementById('shellAuto');
                 const speedEl = document.getElementById('shellSpeed');
@@ -1152,16 +1933,34 @@
                 if (auto) {
                     if (sweepAngle < Math.PI * 2) {
                         sweepAngle = Math.min(Math.PI * 2, sweepAngle + speed);
-                        createShells(10, 20, sweepAngle);
+                        if (volumeObject && volumeObject.children.length > 0) {
+                            updateShells(sweepAngle);
+                        } else {
+                            createShells(10, 20, sweepAngle);
+                        }
                     }
                 } else {
                     createShells(10, 20, Math.PI * 2);
                 }
             } else {
-                sweepAngle = 0; // Reset for next mode switch
+                sweepAngle = 0;
             }
 
             renderer.render(scene, camera);
+        }
+
+        function updateShells(angle) {
+            if (!volumeObject) return;
+            
+            volumeObject.children.forEach((shell, index) => {
+                const r = (index + 1) * (10 / 20);
+                const oldGeo = shell.geometry;
+                
+                const newGeo = new THREE.CylinderGeometry(r, r, 2, 32, 1, true, 0, angle);
+                
+                oldGeo.dispose();
+                shell.geometry = newGeo;
+            });
         }
 
         // ==================== STARTUP ====================
